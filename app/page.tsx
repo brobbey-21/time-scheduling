@@ -56,6 +56,14 @@ export default function TodayPage() {
     load(day, date);
   }, [load]);
 
+  useEffect(() => {
+    const refresh = () => {
+      if (todayDay && dateStr) load(todayDay, dateStr);
+    };
+    window.addEventListener('todos-changed', refresh);
+    return () => window.removeEventListener('todos-changed', refresh);
+  }, [load, todayDay, dateStr]);
+
   const nextUp = classes.find((c) => isClassUpcoming(c.startTime));
   const pendingTodos = todos.filter((t) => !t.completed);
   const topTodos = pendingTodos.slice(0, 3);
@@ -94,6 +102,7 @@ export default function TodayPage() {
     });
     setNewTodo('');
     setSheetOpen(false);
+    notifyScheduleRefresh();
     load(todayDay, dateStr);
   };
 

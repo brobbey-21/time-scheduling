@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { DM_Sans, Sora } from 'next/font/google';
 import './globals.css';
 import AppInitializer from '@/components/AppInitializer';
+import ThemeProvider from '@/components/ThemeProvider';
 import BottomNav from '@/components/BottomNav';
 import NotificationScheduler from '@/components/NotificationScheduler';
 import OfflineBanner from '@/components/OfflineBanner';
@@ -49,15 +50,24 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${sora.variable} ${dmSans.variable}`}>
+    <html lang="en" className={`${sora.variable} ${dmSans.variable}`} suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('isaac-app-theme')||'light';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.setAttribute('data-theme','dark');}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body>
         <AppInitializer>
+          <ThemeProvider>
           <OfflineBanner />
           <NotificationScheduler />
           <div className="mx-auto min-h-screen max-w-[430px] bg-bg-base pb-24">
             {children}
           </div>
           <BottomNav />
+          </ThemeProvider>
         </AppInitializer>
       </body>
     </html>

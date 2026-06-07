@@ -41,6 +41,7 @@ export interface TodoEntry {
   reminderTime?: string;
   order: number;
   createdAt: number;
+  updatedAt?: number;
 }
 
 export interface SettingEntry {

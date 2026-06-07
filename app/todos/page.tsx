@@ -54,6 +54,12 @@ function TodosContent() {
     load();
   }, [dateStr]);
 
+  useEffect(() => {
+    const refresh = () => load();
+    window.addEventListener('todos-changed', refresh);
+    return () => window.removeEventListener('todos-changed', refresh);
+  }, [dateStr]);
+
   if (!date) {
     return (
       <main className="px-5 pt-8 pb-8">

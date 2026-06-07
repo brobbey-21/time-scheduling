@@ -1,28 +1,11 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { isUpstashConfigured, upstashCommand } from './upstash';
 import type { PushStore } from './push-types';
 import { EMPTY_PUSH_STORE } from './push-types';
 
 const DATA_FILE = path.join(process.cwd(), '.data', 'push-store.json');
 const REDIS_KEY = 'push:store';
-
-async function upstashCommand(command: string[]): Promise<unknown | null> {
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) return null;
-
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-      body: JSON.stringify(command),
-    });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
-}
 
 async function readRedisStore(): Promise<PushStore | null> {
   const result = (await upstashCommand(['GET', REDIS_KEY])) as {
@@ -71,7 +54,5 @@ export async function savePushStore(store: PushStore): Promise<void> {
 }
 
 export function isPushStoragePersistent(): boolean {
-  return Boolean(
-    process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
-  );
+  return isUpstashConfigured();
 }

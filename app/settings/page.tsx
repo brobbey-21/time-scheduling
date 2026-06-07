@@ -6,6 +6,8 @@ import {
   BellOff,
   CheckCircle2,
   Info,
+  Monitor,
+  Moon,
   RotateCcw,
   Sun,
   Trash2,
@@ -34,6 +36,7 @@ import {
   sendTestNotification,
 } from '@/lib/notifications';
 import { DEFAULT_CLASSES } from '@/lib/timetable.config';
+import { THEME_OPTIONS, loadTheme, saveTheme, type AppTheme } from '@/lib/theme';
 import { toDateString } from '@/lib/utils';
 
 export default function SettingsPage() {
@@ -44,6 +47,7 @@ export default function SettingsPage() {
   const [upcomingCount, setUpcomingCount] = useState(0);
   const [swReady, setSwReady] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [appTheme, setAppTheme] = useState<AppTheme>('light');
   const pushConfigured = isPushConfigured();
 
   const refreshStatus = useCallback(async () => {
@@ -64,14 +68,20 @@ export default function SettingsPage() {
 
   useEffect(() => {
     getSetting('defaultReminderMins', 10).then(setDefaultReminder);
+    loadTheme().then(setAppTheme);
     refreshStatus();
 
     const onChange = () => refreshStatus();
+    const onThemeChange = (e: Event) => {
+      setAppTheme((e as CustomEvent<AppTheme>).detail);
+    };
     window.addEventListener('notifications-changed', onChange);
     window.addEventListener('focus', onChange);
+    window.addEventListener('theme-changed', onThemeChange);
     return () => {
       window.removeEventListener('notifications-changed', onChange);
       window.removeEventListener('focus', onChange);
+      window.removeEventListener('theme-changed', onThemeChange);
     };
   }, [refreshStatus]);
 
@@ -188,9 +198,9 @@ export default function SettingsPage() {
               <span
                 className={
                   permission === 'granted'
-                    ? 'font-medium text-green-600'
+                    ? 'font-medium text-[var(--success-text)]'
                     : permission === 'denied'
-                      ? 'font-medium text-red-500'
+                      ? 'font-medium text-[var(--danger-text)]'
                       : 'text-[var(--text-tertiary)]'
                 }
               >
@@ -212,7 +222,7 @@ export default function SettingsPage() {
             {pushConfigured && (
               <div className="flex items-center justify-between text-caption">
                 <span className="text-[var(--text-secondary)]">Web Push (VAPID)</span>
-                <span className="font-medium text-green-600">Configured</span>
+                <span className="font-medium text-[var(--success-text)]">Configured</span>
               </div>
             )}
             {process.env.NODE_ENV === 'production' && (
@@ -220,7 +230,7 @@ export default function SettingsPage() {
                 <span className="text-[var(--text-secondary)]">Service worker</span>
                 <span
                   className={
-                    swReady ? 'font-medium text-green-600' : 'text-[var(--text-tertiary)]'
+                    swReady ? 'font-medium text-[var(--success-text)]' : 'text-[var(--text-tertiary)]'
                   }
                 >
                   {swReady ? 'Active' : 'Starting…'}
@@ -241,9 +251,9 @@ export default function SettingsPage() {
           )}
 
           {permission === 'denied' && (
-            <div className="flex gap-2 rounded-xl bg-red-50 p-3">
-              <BellOff size={16} className="mt-0.5 shrink-0 text-red-500" />
-              <p className="text-caption text-red-600">
+            <div className="flex gap-2 rounded-xl bg-[var(--danger-bg)] p-3">
+              <BellOff size={16} className="mt-0.5 shrink-0 text-[var(--danger-text)]" />
+              <p className="text-caption text-[var(--danger-text)]">
                 Notifications are blocked. Open your browser or phone settings and
                 allow notifications for this app.
               </p>
@@ -289,10 +299,30 @@ export default function SettingsPage() {
         </p>
         <div className="card flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Sun size={16} className="text-[var(--text-secondary)]" />
+            {appTheme === 'dark' ? (
+              <Moon size={16} className="text-[var(--text-secondary)]" />
+            ) : appTheme === 'system' ? (
+              <Monitor size={16} className="text-[var(--text-secondary)]" />
+            ) : (
+              <Sun size={16} className="text-[var(--text-secondary)]" />
+            )}
             <span className="text-body">App Theme</span>
           </div>
-          <span className="text-caption text-[var(--text-tertiary)]">Light</span>
+          <select
+            value={appTheme}
+            onChange={async (e) => {
+              const theme = e.target.value as AppTheme;
+              setAppTheme(theme);
+              await saveTheme(theme);
+            }}
+            className="text-caption bg-transparent text-[var(--text-secondary)] outline-none"
+          >
+            {THEME_OPTIONS.map(({ value, label }) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
         </div>
       </section>
 
@@ -304,7 +334,7 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={handleClearTodos}
-            className="flex w-full items-center gap-2 py-3 text-left text-red-500"
+            className="flex w-full items-center gap-2 py-3 text-left text-[var(--danger-text)]"
           >
             <Trash2 size={16} />
             <span className="text-body">Clear All Todos</span>
@@ -312,7 +342,7 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={handleResetTimetable}
-            className="flex w-full items-center gap-2 py-3 text-left text-red-500"
+            className="flex w-full items-center gap-2 py-3 text-left text-[var(--danger-text)]"
           >
             <RotateCcw size={16} />
             <span className="text-body">Reset to Default Timetable</span>
@@ -358,9 +388,9 @@ export default function SettingsPage() {
         <div className="card flex gap-3">
           <Info size={14} className="mt-0.5 shrink-0 text-accent" />
           <p className="text-caption text-[var(--text-secondary)]">
-            Open the app once while online to cache it. After that, your full
-            timetable, todos, and edits work without internet — all data stays
-            on this device.
+            Open the app once while online to cache it. Todos sync across your
+            phone and computer when you use the same deployed app URL and
+            Upstash Redis is connected on Vercel.
           </p>
         </div>
       </section>

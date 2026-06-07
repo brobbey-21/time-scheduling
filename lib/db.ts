@@ -135,18 +135,45 @@ export async function getTodosByDate(date: string): Promise<TodoEntry[]> {
   return todos.sort((a, b) => a.order - b.order);
 }
 
+export async function getAllTodos(): Promise<TodoEntry[]> {
+  const db = await getDB();
+  return db.getAll('todos');
+}
+
+export async function replaceAllTodos(todos: TodoEntry[]): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction('todos', 'readwrite');
+  await tx.store.clear();
+  for (const todo of todos) {
+    await tx.store.put(todo);
+  }
+  await tx.done;
+}
+
+function scheduleTodoCloudPush(): void {
+  if (typeof window !== 'undefined') {
+    import('./todo-sync').then(({ scheduleTodoPush, notifyTodosChanged }) => {
+      scheduleTodoPush();
+      notifyTodosChanged();
+    });
+  }
+}
+
 export async function addTodo(
   entry: Omit<TodoEntry, 'id' | 'createdAt' | 'order'> & { order?: number }
 ): Promise<TodoEntry> {
   const db = await getDB();
   const existing = await getTodosByDate(entry.date);
+  const now = Date.now();
   const todo: TodoEntry = {
     ...entry,
     id: uuidv4(),
     order: entry.order ?? existing.length,
-    createdAt: Date.now(),
+    createdAt: now,
+    updatedAt: now,
   };
   await db.put('todos', todo);
+  scheduleTodoCloudPush();
   return todo;
 }
 
@@ -157,19 +184,22 @@ export async function updateTodo(
   const db = await getDB();
   const existing = await db.get('todos', id);
   if (!existing) return undefined;
-  const updated = { ...existing, ...updates };
+  const updated = { ...existing, ...updates, updatedAt: Date.now() };
   await db.put('todos', updated);
+  scheduleTodoCloudPush();
   return updated;
 }
 
 export async function deleteTodo(id: string): Promise<void> {
   const db = await getDB();
   await db.delete('todos', id);
+  scheduleTodoCloudPush();
 }
 
 export async function clearAllTodos(): Promise<void> {
   const db = await getDB();
   await db.clear('todos');
+  scheduleTodoCloudPush();
 }
 
 export async function bulkPutClasses(

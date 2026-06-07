@@ -37,7 +37,7 @@ export default function BottomSheet({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/30"
+            className="fixed inset-0 z-[100] bg-black/30"
             onClick={onClose}
           />
           <motion.div
@@ -45,11 +45,13 @@ export default function BottomSheet({
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-            className="fixed bottom-0 left-0 right-0 z-50 mx-auto max-w-[430px]"
+            className="fixed bottom-0 left-0 right-0 z-[100] mx-auto max-w-[430px]"
           >
             <div
               className="rounded-t-2xl bg-bg-card px-5 pt-4 shadow-md"
-              style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
+              style={{
+                paddingBottom: 'max(32px, calc(16px + env(safe-area-inset-bottom)))',
+              }}
             >
               <div className="mb-4 flex items-center justify-between">
                 {title && <h2 className="text-subtitle">{title}</h2>}
