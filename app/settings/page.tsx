@@ -1,0 +1,369 @@
+'use client';
+
+import { useCallback, useEffect, useState } from 'react';
+import {
+  Bell,
+  BellOff,
+  CheckCircle2,
+  Info,
+  RotateCcw,
+  Sun,
+  Trash2,
+} from 'lucide-react';
+import PageHeader from '@/components/PageHeader';
+import {
+  clearAllTodos,
+  getAllClasses,
+  getSetting,
+  getTodosByDate,
+  resetClassesToDefault,
+  setSetting,
+} from '@/lib/db';
+import {
+  isPushConfigured,
+  sendTestPush,
+  subscribeToPush,
+  unsubscribeFromPush,
+} from '@/lib/push-client';
+import {
+  getNotificationPermission,
+  getNotificationStatus,
+  getUpcomingClassCount,
+  notifyScheduleRefresh,
+  requestNotificationPermission,
+  sendTestNotification,
+} from '@/lib/notifications';
+import { DEFAULT_CLASSES } from '@/lib/timetable.config';
+import { toDateString } from '@/lib/utils';
+
+export default function SettingsPage() {
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [defaultReminder, setDefaultReminder] = useState(10);
+  const [permission, setPermission] = useState<string>('default');
+  const [scheduledCount, setScheduledCount] = useState(0);
+  const [upcomingCount, setUpcomingCount] = useState(0);
+  const [swReady, setSwReady] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const pushConfigured = isPushConfigured();
+
+  const refreshStatus = useCallback(async () => {
+    const enabled = await getSetting('notificationsEnabled', true);
+    setNotificationsEnabled(enabled);
+    setPermission(getNotificationPermission());
+
+    const status = await getNotificationStatus(enabled);
+    setScheduledCount(status.scheduledCount);
+    setSwReady(status.serviceWorkerReady);
+
+    const [classes, todos] = await Promise.all([
+      getAllClasses(),
+      getTodosByDate(toDateString()),
+    ]);
+    setUpcomingCount(getUpcomingClassCount(classes) + todos.filter((t) => !t.completed && t.reminderTime).length);
+  }, []);
+
+  useEffect(() => {
+    getSetting('defaultReminderMins', 10).then(setDefaultReminder);
+    refreshStatus();
+
+    const onChange = () => refreshStatus();
+    window.addEventListener('notifications-changed', onChange);
+    window.addEventListener('focus', onChange);
+    return () => {
+      window.removeEventListener('notifications-changed', onChange);
+      window.removeEventListener('focus', onChange);
+    };
+  }, [refreshStatus]);
+
+  const enableNotifications = async () => {
+    const result = await requestNotificationPermission();
+    setPermission(result);
+    if (result !== 'granted') return;
+
+    await setSetting('notificationsEnabled', true);
+    setNotificationsEnabled(true);
+    if (pushConfigured) {
+      await subscribeToPush();
+    }
+    notifyScheduleRefresh();
+    await refreshStatus();
+  };
+
+  const toggleNotifications = async () => {
+    if (!notificationsEnabled) {
+      await enableNotifications();
+      return;
+    }
+
+    await setSetting('notificationsEnabled', false);
+    setNotificationsEnabled(false);
+    if (pushConfigured) {
+      await unsubscribeFromPush();
+    }
+    notifyScheduleRefresh();
+    await refreshStatus();
+  };
+
+  const handleTestNotification = async () => {
+    setTesting(true);
+    if (permission !== 'granted') {
+      await enableNotifications();
+    }
+    if (pushConfigured) {
+      await sendTestPush();
+    }
+    await sendTestNotification();
+    notifyScheduleRefresh();
+    await refreshStatus();
+    setTesting(false);
+  };
+
+  const handleClearTodos = async () => {
+    if (confirm('Clear all todos? This cannot be undone.')) {
+      await clearAllTodos();
+      notifyScheduleRefresh();
+    }
+  };
+
+  const handleResetTimetable = async () => {
+    if (
+      confirm(
+        'Reset to default timetable? Custom classes will be kept, default classes restored.'
+      )
+    ) {
+      await resetClassesToDefault(DEFAULT_CLASSES);
+      notifyScheduleRefresh();
+    }
+  };
+
+  const permissionLabel =
+    permission === 'granted'
+      ? 'Allowed'
+      : permission === 'denied'
+        ? 'Blocked'
+        : permission === 'unsupported'
+          ? 'Not supported'
+          : 'Not asked yet';
+
+  return (
+    <main className="px-5 pt-8 pb-8">
+      <PageHeader title="Settings" />
+
+      <section className="mb-6">
+        <p className="text-micro mb-3 uppercase text-[var(--text-tertiary)]">
+          Notifications
+        </p>
+        <div className="card space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-body">Enable Notifications</p>
+              <p className="text-caption mt-1 text-[var(--text-secondary)]">
+                Reminders before classes and timed tasks
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={notificationsEnabled && permission === 'granted'}
+              onClick={toggleNotifications}
+              className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+                notificationsEnabled && permission === 'granted'
+                  ? 'bg-accent'
+                  : 'bg-[var(--border)]'
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                  notificationsEnabled && permission === 'granted'
+                    ? 'left-[22px]'
+                    : 'left-0.5'
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="space-y-2 rounded-xl bg-[var(--bg-base)] p-3">
+            <div className="flex items-center justify-between text-caption">
+              <span className="text-[var(--text-secondary)]">Permission</span>
+              <span
+                className={
+                  permission === 'granted'
+                    ? 'font-medium text-green-600'
+                    : permission === 'denied'
+                      ? 'font-medium text-red-500'
+                      : 'text-[var(--text-tertiary)]'
+                }
+              >
+                {permissionLabel}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-caption">
+              <span className="text-[var(--text-secondary)]">Scheduled today</span>
+              <span className="font-medium text-[var(--text-primary)]">
+                {scheduledCount} active
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-caption">
+              <span className="text-[var(--text-secondary)]">Upcoming reminders</span>
+              <span className="font-medium text-[var(--text-primary)]">
+                {upcomingCount}
+              </span>
+            </div>
+            {pushConfigured && (
+              <div className="flex items-center justify-between text-caption">
+                <span className="text-[var(--text-secondary)]">Web Push (VAPID)</span>
+                <span className="font-medium text-green-600">Configured</span>
+              </div>
+            )}
+            {process.env.NODE_ENV === 'production' && (
+              <div className="flex items-center justify-between text-caption">
+                <span className="text-[var(--text-secondary)]">Service worker</span>
+                <span
+                  className={
+                    swReady ? 'font-medium text-green-600' : 'text-[var(--text-tertiary)]'
+                  }
+                >
+                  {swReady ? 'Active' : 'Starting…'}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {permission === 'default' && (
+            <button
+              type="button"
+              onClick={enableNotifications}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 text-body font-semibold text-white"
+            >
+              <Bell size={18} />
+              Allow Notifications
+            </button>
+          )}
+
+          {permission === 'denied' && (
+            <div className="flex gap-2 rounded-xl bg-red-50 p-3">
+              <BellOff size={16} className="mt-0.5 shrink-0 text-red-500" />
+              <p className="text-caption text-red-600">
+                Notifications are blocked. Open your browser or phone settings and
+                allow notifications for this app.
+              </p>
+            </div>
+          )}
+
+          {permission === 'granted' && (
+            <button
+              type="button"
+              onClick={handleTestNotification}
+              disabled={testing}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border)] py-3 text-body font-semibold shadow-sm"
+            >
+              <CheckCircle2 size={18} className="text-accent" />
+              {testing ? 'Sending…' : 'Send Test Notification'}
+            </button>
+          )}
+
+          <div className="flex items-center justify-between border-t border-[var(--border)] pt-4">
+            <span className="text-body">Default Reminder</span>
+            <select
+              value={defaultReminder}
+              onChange={async (e) => {
+                const val = parseInt(e.target.value, 10);
+                setDefaultReminder(val);
+                await setSetting('defaultReminderMins', val);
+              }}
+              className="text-caption bg-transparent text-[var(--text-secondary)] outline-none"
+            >
+              {[5, 10, 15, 30].map((m) => (
+                <option key={m} value={m}>
+                  {m} minutes before
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section className="mb-6">
+        <p className="text-micro mb-3 uppercase text-[var(--text-tertiary)]">
+          Appearance
+        </p>
+        <div className="card flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sun size={16} className="text-[var(--text-secondary)]" />
+            <span className="text-body">App Theme</span>
+          </div>
+          <span className="text-caption text-[var(--text-tertiary)]">Light</span>
+        </div>
+      </section>
+
+      <section className="mb-6">
+        <p className="text-micro mb-3 uppercase text-[var(--text-tertiary)]">
+          Data
+        </p>
+        <div className="card divide-y divide-[var(--border)]">
+          <button
+            type="button"
+            onClick={handleClearTodos}
+            className="flex w-full items-center gap-2 py-3 text-left text-red-500"
+          >
+            <Trash2 size={16} />
+            <span className="text-body">Clear All Todos</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleResetTimetable}
+            className="flex w-full items-center gap-2 py-3 text-left text-red-500"
+          >
+            <RotateCcw size={16} />
+            <span className="text-body">Reset to Default Timetable</span>
+          </button>
+        </div>
+      </section>
+
+      <section className="mb-6">
+        <p className="text-micro mb-3 uppercase text-[var(--text-tertiary)]">
+          About
+        </p>
+        <div className="card space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Info size={16} className="text-[var(--text-secondary)]" />
+              <span className="text-body">App Version</span>
+            </div>
+            <span className="text-caption text-[var(--text-tertiary)]">1.0.0</span>
+          </div>
+          <p className="text-caption text-[var(--text-secondary)]">
+            Built for UMaT Semester 2, 2026
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <p className="text-micro mb-3 uppercase text-[var(--text-tertiary)]">
+          iOS Tip
+        </p>
+        <div className="card flex gap-3">
+          <Info size={14} className="mt-0.5 shrink-0 text-accent" />
+          <p className="text-caption text-[var(--text-secondary)]">
+            On iPhone, tap Share → Add to Home Screen, then open the app and allow
+            notifications in Settings. Reminders resync each time you open the app.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <p className="text-micro mb-3 uppercase text-[var(--text-tertiary)]">
+          Offline
+        </p>
+        <div className="card flex gap-3">
+          <Info size={14} className="mt-0.5 shrink-0 text-accent" />
+          <p className="text-caption text-[var(--text-secondary)]">
+            Open the app once while online to cache it. After that, your full
+            timetable, todos, and edits work without internet — all data stays
+            on this device.
+          </p>
+        </div>
+      </section>
+    </main>
+  );
+}

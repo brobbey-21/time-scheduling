@@ -1,0 +1,116 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-base: #F5F5F0;
+  --bg-card: #FFFFFF;
+  --bg-card-hover: #FAFAF8;
+
+  --text-primary: #0F172A;
+  --text-secondary: #64748B;
+  --text-tertiary: #94A3B8;
+
+  --accent: #2563EB;
+  --accent-light: #EFF6FF;
+
+  --border: #E2E8F0;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+
+  --type-physical-bg: #FEF3C7;
+  --type-physical-text: #D97706;
+  --type-vle-bg: #EDE9FE;
+  --type-vle-text: #7C3AED;
+  --type-practical-bg: #FFEDD5;
+  --type-practical-text: #EA580C;
+  --type-study-bg: #DCFCE7;
+  --type-study-text: #16A34A;
+  --type-rest-bg: #FEE2E2;
+  --type-rest-text: #DC2626;
+
+  --tint-physical: #FFFBEB;
+  --tint-vle: #F5F3FF;
+  --tint-practical: #FFF7ED;
+  --tint-study: #F0FDF4;
+  --tint-rest: #FFF5F5;
+}
+
+@layer base {
+  body {
+    @apply bg-bg-base text-[var(--text-primary)] font-dm-sans antialiased;
+  }
+}
+
+@layer components {
+  .text-display {
+    font: 700 28px/1.2 var(--font-sora), sans-serif;
+  }
+  .text-title {
+    font: 600 20px/1.3 var(--font-sora), sans-serif;
+  }
+  .text-subtitle {
+    font: 600 16px/1.4 var(--font-sora), sans-serif;
+  }
+  .text-body {
+    font: 400 15px/1.5 var(--font-dm-sans), sans-serif;
+  }
+  .text-caption {
+    font: 400 13px/1.4 var(--font-dm-sans), sans-serif;
+  }
+  .text-micro {
+    font: 500 11px/1.3 var(--font-dm-sans), sans-serif;
+    letter-spacing: 0.05em;
+  }
+
+  .card {
+    background: var(--bg-card);
+    border-radius: 16px;
+    box-shadow: var(--shadow-sm);
+    padding: 16px;
+  }
+  .card:active {
+    transform: scale(0.98);
+  }
+
+  .type-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font: 600 11px/1 var(--font-dm-sans), sans-serif;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .type-badge[data-type='CLASS_PHYSICAL'] {
+    background: var(--type-physical-bg);
+    color: var(--type-physical-text);
+  }
+  .type-badge[data-type='CLASS_VLE'] {
+    background: var(--type-vle-bg);
+    color: var(--type-vle-text);
+  }
+  .type-badge[data-type='PRACTICAL'] {
+    background: var(--type-practical-bg);
+    color: var(--type-practical-text);
+  }
+  .type-badge[data-type='STUDY'] {
+    background: var(--type-study-bg);
+    color: var(--type-study-text);
+  }
+  .type-badge[data-type='REST'] {
+    background: var(--type-rest-bg);
+    color: var(--type-rest-text);
+  }
+
+  .type-badge-pulse {
+    animation: pulse-ring 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-ring {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4); }
+    50% { box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2); }
+  }
+}
