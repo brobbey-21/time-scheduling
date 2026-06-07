@@ -54,8 +54,10 @@ console.log('  1. Push repo to GitHub');
 console.log('  2. Import project on vercel.com');
 console.log('  3. Paste .env.local vars into Environment Variables');
 console.log('  4. Add Upstash Redis (Storage → Upstash, free tier)');
-console.log('  5. Deploy — cron runs every minute automatically');
-console.log('  6. On iPhone: Safari → Share → Add to Home Screen');
+console.log('  5. Deploy (Vercel Hobby: no built-in minute cron — see push note below)');
+console.log('  6. Optional background push: cron-job.org → GET /api/cron/reminders every minute');
+console.log('     Header: Authorization: Bearer <CRON_SECRET>');
+console.log('  7. On iPhone: Safari → Share → Add to Home Screen');
 
 if (!ok) {
   console.log('\n✗ Not ready — fix items above');
