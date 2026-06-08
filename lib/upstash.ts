@@ -1,12 +1,26 @@
-export function isUpstashConfigured(): boolean {
-  return Boolean(
-    process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+function redisRestUrl(): string | undefined {
+  return (
+    process.env.UPSTASH_REDIS_REST_URL ||
+    process.env.KV_REST_API_URL ||
+    process.env.KV_URL
   );
 }
 
+function redisRestToken(): string | undefined {
+  return (
+    process.env.UPSTASH_REDIS_REST_TOKEN ||
+    process.env.KV_REST_API_TOKEN ||
+    process.env.KV_REST_API_READ_ONLY_TOKEN
+  );
+}
+
+export function isUpstashConfigured(): boolean {
+  return Boolean(redisRestUrl() && redisRestToken());
+}
+
 export async function upstashCommand(command: string[]): Promise<unknown | null> {
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const url = redisRestUrl();
+  const token = redisRestToken();
   if (!url || !token) return null;
 
   try {
