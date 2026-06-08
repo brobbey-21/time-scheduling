@@ -15,48 +15,65 @@ interface ClassCardProps {
 export default function ClassCard({ cls, showTime = false }: ClassCardProps) {
   const tint = TYPE_CONFIG[cls.type].cardTint;
   const active = isClassActive(cls.startTime, cls.endTime);
-  const hasMeeting = cls.type === 'CLASS_VLE' && cls.meetingUrl;
+  const showJoinNow =
+    cls.type === 'CLASS_VLE' && cls.meetingUrl && active;
 
   return (
     <div
-      className="card transition-transform active:scale-[0.98]"
+      className={`card transition-transform active:scale-[0.98] ${
+        active ? 'ring-2 ring-accent/25' : ''
+      }`}
       style={{ background: `var(${tint})` }}
     >
       <Link href={`/manage/${cls.id}`} className="block">
         <div className="flex gap-3">
           {showTime && (
-            <div className="text-caption shrink-0 pt-0.5 text-[var(--text-tertiary)]">
-              {formatTime12(cls.startTime)}
+            <div className="flex shrink-0 flex-col items-center pt-0.5">
+              <span className="text-caption font-semibold text-[var(--text-primary)]">
+                {formatTime12(cls.startTime)}
+              </span>
+              {active && (
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
+              )}
             </div>
           )}
           <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <p className="text-subtitle truncate">
-                  {cls.courseCode} · {cls.courseName}
-                </p>
-                {cls.isDefault && (
-                  <span className="shrink-0 rounded-full bg-[var(--accent-light)] px-1.5 py-0.5 text-micro font-semibold text-accent">
-                    Official
-                  </span>
-                )}
-              </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-micro font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">
+                {cls.courseCode}
+              </span>
+              {cls.isDefault && (
+                <span className="rounded-full bg-[var(--accent-light)] px-1.5 py-0.5 text-micro font-semibold text-accent">
+                  Official
+                </span>
+              )}
+              {active && (
+                <span className="rounded-full bg-accent/15 px-1.5 py-0.5 text-micro font-semibold text-accent">
+                  Now
+                </span>
+              )}
+            </div>
+            <h3 className="text-title mt-1 leading-snug text-[var(--text-primary)]">
+              {cls.courseName}
+            </h3>
             {(cls.lecturer || cls.venue) && (
-              <p className="text-caption mt-1 text-[var(--text-secondary)]">
+              <p className="text-caption mt-2 text-[var(--text-secondary)]">
                 {[cls.lecturer, cls.venue].filter(Boolean).join('  ·  ')}
               </p>
             )}
           </div>
         </div>
       </Link>
-      <div className="mt-3 flex items-center justify-between gap-2">
-        {hasMeeting ? (
+
+      <div className="mt-4 flex items-center justify-between gap-2">
+        {showJoinNow ? (
           <button
             type="button"
             onClick={() => window.open(cls.meetingUrl, '_blank', 'noopener,noreferrer')}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-micro font-semibold text-white"
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-accent py-2.5 text-caption font-bold text-white shadow-sm"
           >
-            <Video size={14} />
-            Join Class
+            <Video size={16} />
+            Join now
           </button>
         ) : (
           <span />

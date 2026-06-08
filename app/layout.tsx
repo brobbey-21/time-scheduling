@@ -6,6 +6,7 @@ import ThemeProvider from '@/components/ThemeProvider';
 import BottomNav from '@/components/BottomNav';
 import NotificationScheduler from '@/components/NotificationScheduler';
 import OfflineBanner from '@/components/OfflineBanner';
+import OnboardingTutorial from '@/components/OnboardingTutorial';
 
 const sora = Sora({
   subsets: ['latin'],
@@ -62,6 +63,7 @@ export default function RootLayout({
         <AppInitializer>
           <ThemeProvider>
           <OfflineBanner />
+          <OnboardingTutorial />
           <NotificationScheduler />
           <div className="mx-auto min-h-screen max-w-[430px] bg-bg-base pb-24">
             {children}

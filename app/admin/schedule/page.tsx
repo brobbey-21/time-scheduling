@@ -6,6 +6,7 @@ import { ArrowLeft, Plus, Shield } from 'lucide-react';
 import ClassCardCompact from '@/components/ClassCardCompact';
 import EmptyState from '@/components/EmptyState';
 import PageHeader from '@/components/PageHeader';
+import IcsImportButton from '@/components/IcsImportButton';
 import { fetchSharedSchedule } from '@/lib/admin-schedule';
 import type { ClassEntry } from '@/lib/types';
 import { DAYS } from '@/lib/types';
@@ -57,11 +58,14 @@ export default function AdminSchedulePage() {
         }
       />
 
-      <div className="mb-5 rounded-xl bg-[var(--accent-light)] p-4">
-        <p className="text-caption text-[var(--text-secondary)]">
-          Changes here update the shared schedule for all MN 3C students. Personal study
-          routines are not affected.
-        </p>
+      <div className="mb-5 space-y-4">
+        <div className="rounded-xl bg-[var(--accent-light)] p-4">
+          <p className="text-caption text-[var(--text-secondary)]">
+            Changes here update the shared schedule for all MN 3C students. Personal study
+            routines are not affected.
+          </p>
+        </div>
+        <IcsImportButton onImported={load} />
       </div>
 
       {!loaded ? (
