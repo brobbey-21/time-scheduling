@@ -1,24 +1,29 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   Bell,
   BellOff,
   CheckCircle2,
   Info,
+  LogOut,
   Monitor,
   Moon,
-  RotateCcw,
+  RefreshCw,
+  Shield,
   Sun,
   Trash2,
+  User,
 } from 'lucide-react';
+import { syncAllClasses } from '@/lib/class-sync';
 import PageHeader from '@/components/PageHeader';
 import {
   clearAllTodos,
   getAllClasses,
   getSetting,
   getTodosByDate,
-  resetClassesToDefault,
   setSetting,
 } from '@/lib/db';
 import {
@@ -35,11 +40,21 @@ import {
   requestNotificationPermission,
   sendTestNotification,
 } from '@/lib/notifications';
-import { DEFAULT_CLASSES } from '@/lib/timetable.config';
 import { THEME_OPTIONS, loadTheme, saveTheme, type AppTheme } from '@/lib/theme';
 import { toDateString } from '@/lib/utils';
 
+interface SessionUser {
+  id: string;
+  email: string;
+  name: string;
+  role: 'admin' | 'student';
+  cohort: string;
+}
+
 export default function SettingsPage() {
+  const router = useRouter();
+  const [user, setUser] = useState<SessionUser | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [defaultReminder, setDefaultReminder] = useState(10);
   const [permission, setPermission] = useState<string>('default');
@@ -48,6 +63,7 @@ export default function SettingsPage() {
   const [swReady, setSwReady] = useState(false);
   const [testing, setTesting] = useState(false);
   const [appTheme, setAppTheme] = useState<AppTheme>('light');
+  const [syncing, setSyncing] = useState(false);
   const pushConfigured = isPushConfigured();
 
   const refreshStatus = useCallback(async () => {
@@ -67,6 +83,10 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
+    fetch('/api/auth/me')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setUser(data?.user ?? null))
+      .catch(() => setUser(null));
     getSetting('defaultReminderMins', 10).then(setDefaultReminder);
     loadTheme().then(setAppTheme);
     refreshStatus();
@@ -135,14 +155,22 @@ export default function SettingsPage() {
     }
   };
 
-  const handleResetTimetable = async () => {
-    if (
-      confirm(
-        'Reset to default timetable? Custom classes will be kept, default classes restored.'
-      )
-    ) {
-      await resetClassesToDefault(DEFAULT_CLASSES);
-      notifyScheduleRefresh();
+  const handleSyncSchedule = async () => {
+    setSyncing(true);
+    await syncAllClasses();
+    notifyScheduleRefresh();
+    await refreshStatus();
+    setSyncing(false);
+  };
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      router.replace('/login');
+      router.refresh();
+    } finally {
+      setLoggingOut(false);
     }
   };
 
@@ -158,6 +186,59 @@ export default function SettingsPage() {
   return (
     <main className="px-5 pt-8 pb-8">
       <PageHeader title="Settings" />
+
+      {user && (
+        <section className="mb-6">
+          <p className="text-micro mb-3 uppercase text-[var(--text-tertiary)]">
+            Account
+          </p>
+          <div className="card space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent-light)]">
+                <User size={18} className="text-accent" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-body truncate">{user.name}</p>
+                <p className="text-caption truncate text-[var(--text-secondary)]">
+                  {user.email} · {user.cohort}
+                </p>
+                {user.role === 'admin' && (
+                  <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-[var(--accent-light)] px-2 py-0.5 text-micro font-semibold text-accent">
+                    <Shield size={10} />
+                    Admin
+                  </span>
+                )}
+              </div>
+            </div>
+            {user.role === 'admin' && (
+              <div className="space-y-2">
+                <Link
+                  href="/admin"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 text-body font-semibold text-white"
+                >
+                  <Shield size={18} />
+                  Admin Panel
+                </Link>
+                <Link
+                  href="/admin/users"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border)] py-3 text-body font-semibold"
+                >
+                  View Members & Assign Admins
+                </Link>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={handleLogout}
+              disabled={loggingOut}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border)] py-3 text-body font-semibold text-[var(--danger-text)]"
+            >
+              <LogOut size={18} />
+              {loggingOut ? 'Signing out…' : 'Sign Out'}
+            </button>
+          </div>
+        </section>
+      )}
 
       <section className="mb-6">
         <p className="text-micro mb-3 uppercase text-[var(--text-tertiary)]">
@@ -333,19 +414,22 @@ export default function SettingsPage() {
         <div className="card divide-y divide-[var(--border)]">
           <button
             type="button"
+            onClick={handleSyncSchedule}
+            disabled={syncing}
+            className="flex w-full items-center gap-2 py-3 text-left"
+          >
+            <RefreshCw size={16} className={syncing ? 'animate-spin text-accent' : 'text-accent'} />
+            <span className="text-body">
+              {syncing ? 'Syncing…' : 'Refresh Class Schedule'}
+            </span>
+          </button>
+          <button
+            type="button"
             onClick={handleClearTodos}
             className="flex w-full items-center gap-2 py-3 text-left text-[var(--danger-text)]"
           >
             <Trash2 size={16} />
             <span className="text-body">Clear All Todos</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleResetTimetable}
-            className="flex w-full items-center gap-2 py-3 text-left text-[var(--danger-text)]"
-          >
-            <RotateCcw size={16} />
-            <span className="text-body">Reset to Default Timetable</span>
           </button>
         </div>
       </section>
@@ -363,7 +447,7 @@ export default function SettingsPage() {
             <span className="text-caption text-[var(--text-tertiary)]">1.0.0</span>
           </div>
           <p className="text-caption text-[var(--text-secondary)]">
-            Built for UMaT Semester 2, 2026
+            MN 3C · UMaT Semester 2, 2026
           </p>
         </div>
       </section>
@@ -388,9 +472,8 @@ export default function SettingsPage() {
         <div className="card flex gap-3">
           <Info size={14} className="mt-0.5 shrink-0 text-accent" />
           <p className="text-caption text-[var(--text-secondary)]">
-            Open the app once while online to cache it. Todos sync across your
-            phone and computer when you use the same deployed app URL and
-            Upstash Redis is connected on Vercel.
+            Open the app once while online to cache it. Your timetable and todos
+            sync to your account across phone and computer when you sign in.
           </p>
         </div>
       </section>

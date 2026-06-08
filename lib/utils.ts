@@ -109,6 +109,7 @@ export function generateICS(cls: {
   venue: string;
   lecturer: string;
   notes: string;
+  meetingUrl?: string;
 }): string {
   const dayMap: Record<DayOfWeek, string> = {
     Monday: 'MO',
@@ -132,6 +133,7 @@ export function generateICS(cls: {
     `SUMMARY:${cls.courseCode} - ${cls.courseName}`,
     `LOCATION:${cls.venue || 'TBD'}`,
     `DESCRIPTION:${desc}`,
+    ...(cls.meetingUrl ? [`URL:${cls.meetingUrl}`] : []),
     `RRULE:FREQ=WEEKLY;BYDAY=${dayMap[cls.day]}`,
     `DTSTART;TZID=Africa/Accra:${new Date().toISOString().slice(0, 10).replace(/-/g, '')}T${sh}${sm}00`,
     `DTEND;TZID=Africa/Accra:${new Date().toISOString().slice(0, 10).replace(/-/g, '')}T${eh}${em}00`,

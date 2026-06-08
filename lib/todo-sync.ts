@@ -60,7 +60,7 @@ export async function pullTodos(): Promise<boolean> {
   pulling = true;
   try {
     const res = await fetch('/api/todos', { cache: 'no-store' });
-    if (res.status === 503) return false;
+    if (res.status === 401 || res.status === 503) return false;
     if (!res.ok) return false;
 
     const data = (await res.json()) as { todos?: TodoEntry[] };

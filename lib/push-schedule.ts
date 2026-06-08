@@ -42,12 +42,14 @@ export function buildPushReminders(
     const fireAt = notifyTimeForClass(cls);
     if (fireAt.getTime() <= now) return;
 
+    const meetingUrl =
+      cls.type === 'CLASS_VLE' && cls.meetingUrl ? cls.meetingUrl : undefined;
     reminders.push({
       id: `class-${cls.id}`,
       fireAt: fireAt.toISOString(),
       title: buildClassTitle(cls),
       body: buildClassBody(cls),
-      url: `/manage/${cls.id}`,
+      url: meetingUrl ?? `/manage/${cls.id}`,
       tag: `class-${cls.id}`,
     });
   });

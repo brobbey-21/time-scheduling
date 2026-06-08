@@ -11,6 +11,8 @@ interface ClassCardCompactProps {
   selectable?: boolean;
   selected?: boolean;
   onSelect?: (id: string) => void;
+  href?: string;
+  badge?: string;
 }
 
 export default function ClassCardCompact({
@@ -18,7 +20,14 @@ export default function ClassCardCompact({
   selectable,
   selected,
   onSelect,
+  href,
+  badge,
 }: ClassCardCompactProps) {
+  const linkHref = href ?? `/manage/${cls.id}`;
+  const showOfficial = badge ?? (cls.isDefault ? 'Official' : undefined);
+  const showPersonal = !cls.isDefault ? 'My Routine' : undefined;
+  const label = showOfficial ?? showPersonal;
+
   const content = (
     <div className="card flex items-center gap-3 transition-transform active:scale-[0.98]">
       {selectable && (
@@ -35,12 +44,25 @@ export default function ClassCardCompact({
           <p className="text-subtitle">{cls.courseCode}</p>
           <TypeBadge type={cls.type} />
         </div>
-        <p className="text-caption mt-0.5 text-[var(--text-secondary)] truncate">
+        <p className="text-caption mt-0.5 truncate text-[var(--text-secondary)]">
           {cls.courseName}
         </p>
-        <p className="text-caption mt-1 text-[var(--text-tertiary)]">
-          {cls.day} · {formatTime12(cls.startTime)}
-        </p>
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <p className="text-caption text-[var(--text-tertiary)]">
+            {cls.day} · {formatTime12(cls.startTime)}
+          </p>
+          {label && (
+            <span
+              className={`rounded-full px-2 py-0.5 text-micro font-semibold ${
+                cls.isDefault
+                  ? 'bg-[var(--accent-light)] text-accent'
+                  : 'bg-[var(--bg-base)] text-[var(--text-secondary)]'
+              }`}
+            >
+              {label}
+            </span>
+          )}
+        </div>
       </div>
       {!selectable && (
         <ChevronRight size={18} className="shrink-0 text-[var(--text-tertiary)]" />
@@ -57,7 +79,7 @@ export default function ClassCardCompact({
   }
 
   return (
-    <Link href={`/manage/${cls.id}`} className="block">
+    <Link href={linkHref} className="block">
       {content}
     </Link>
   );

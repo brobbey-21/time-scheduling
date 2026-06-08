@@ -78,6 +78,25 @@ export async function getClassById(id: string): Promise<ClassEntry | undefined> 
   return db.get('classes', id);
 }
 
+function scheduleClassCloudPush(): void {
+  if (typeof window !== 'undefined') {
+    import('./class-sync').then(({ scheduleClassPush, notifyClassesChanged }) => {
+      scheduleClassPush();
+      notifyClassesChanged();
+    });
+  }
+}
+
+export async function replaceAllClasses(classes: ClassEntry[]): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction('classes', 'readwrite');
+  await tx.store.clear();
+  for (const cls of classes) {
+    await tx.store.put(cls);
+  }
+  await tx.done;
+}
+
 export async function addClass(
   entry: Omit<ClassEntry, 'createdAt' | 'updatedAt'>
 ): Promise<ClassEntry> {
@@ -85,6 +104,7 @@ export async function addClass(
   const now = Date.now();
   const full: ClassEntry = { ...entry, createdAt: now, updatedAt: now };
   await db.put('classes', full);
+  scheduleClassCloudPush();
   return full;
 }
 
@@ -95,20 +115,33 @@ export async function updateClass(
   const db = await getDB();
   const existing = await db.get('classes', id);
   if (!existing) return undefined;
+  if (existing.isDefault) return undefined;
   const updated: ClassEntry = { ...existing, ...updates, updatedAt: Date.now() };
   await db.put('classes', updated);
+  scheduleClassCloudPush();
   return updated;
 }
 
-export async function deleteClass(id: string): Promise<void> {
+export async function deleteClass(id: string): Promise<boolean> {
   const db = await getDB();
+  const existing = await db.get('classes', id);
+  if (!existing || existing.isDefault) return false;
   await db.delete('classes', id);
+  scheduleClassCloudPush();
+  return true;
 }
 
 export async function deleteClasses(ids: string[]): Promise<void> {
   const db = await getDB();
+  const deletable: string[] = [];
+  for (const id of ids) {
+    const existing = await db.get('classes', id);
+    if (existing && !existing.isDefault) deletable.push(id);
+  }
+  if (deletable.length === 0) return;
   const tx = db.transaction('classes', 'readwrite');
-  await Promise.all([...ids.map((id) => tx.store.delete(id)), tx.done]);
+  await Promise.all([...deletable.map((id) => tx.store.delete(id)), tx.done]);
+  scheduleClassCloudPush();
 }
 
 export async function resetClassesToDefault(
@@ -127,6 +160,7 @@ export async function resetClassesToDefault(
     await tx.store.put(entry);
   }
   await tx.done;
+  scheduleClassCloudPush();
 }
 
 export async function getTodosByDate(date: string): Promise<TodoEntry[]> {
@@ -212,4 +246,5 @@ export async function bulkPutClasses(
     await tx.store.put({ ...entry, createdAt: now, updatedAt: now });
   }
   await tx.done;
+  scheduleClassCloudPush();
 }

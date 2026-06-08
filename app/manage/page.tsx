@@ -11,28 +11,51 @@ import type { ClassEntry } from '@/lib/types';
 import { DAYS } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-type Tab = 'all' | 'custom';
+type Tab = 'schedule' | 'routines';
+
+interface SessionUser {
+  name: string;
+  role: 'admin' | 'student';
+}
 
 export default function ManagePage() {
   const [classes, setClasses] = useState<ClassEntry[]>([]);
-  const [tab, setTab] = useState<Tab>('all');
+  const [tab, setTab] = useState<Tab>('schedule');
   const [editMode, setEditMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [user, setUser] = useState<SessionUser | null>(null);
 
   const load = () => getAllClasses().then(setClasses);
 
   useEffect(() => {
     load();
+    fetch('/api/auth/me')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setUser(data?.user ?? null));
+
+    const refresh = () => load();
+    window.addEventListener('classes-changed', refresh);
+    return () => window.removeEventListener('classes-changed', refresh);
   }, []);
 
-  const filtered =
-    tab === 'custom'
-      ? classes.filter((c) => !c.isDefault)
-      : classes.sort((a, b) => {
-          const dayDiff = DAYS.indexOf(a.day) - DAYS.indexOf(b.day);
-          if (dayDiff !== 0) return dayDiff;
-          return a.startTime.localeCompare(b.startTime);
-        });
+  const scheduleClasses = classes
+    .filter((c) => c.isDefault)
+    .sort((a, b) => {
+      const dayDiff = DAYS.indexOf(a.day) - DAYS.indexOf(b.day);
+      if (dayDiff !== 0) return dayDiff;
+      return a.startTime.localeCompare(b.startTime);
+    });
+
+  const routineClasses = classes
+    .filter((c) => !c.isDefault)
+    .sort((a, b) => {
+      const dayDiff = DAYS.indexOf(a.day) - DAYS.indexOf(b.day);
+      if (dayDiff !== 0) return dayDiff;
+      return a.startTime.localeCompare(b.startTime);
+    });
+
+  const filtered = tab === 'schedule' ? scheduleClasses : routineClasses;
+  const canEdit = tab === 'routines';
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -54,7 +77,8 @@ export default function ManagePage() {
   return (
     <main className="px-5 pt-8 pb-8">
       <PageHeader
-        title="Manage Classes"
+        title="Classes"
+        subtitle="Shared MN 3C schedule + your private routines"
         right={
           <div className="flex items-center gap-3">
             <Link
@@ -64,41 +88,73 @@ export default function ManagePage() {
             >
               <Settings size={20} />
             </Link>
-            <button
-              type="button"
-              onClick={() => {
-                setEditMode(!editMode);
-                setSelected(new Set());
-              }}
-              className={cn(
-                'text-caption font-semibold',
-                editMode ? 'text-accent' : 'text-[var(--text-secondary)]'
-              )}
-            >
-              {editMode ? 'Done' : 'Edit'}
-            </button>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditMode(!editMode);
+                  setSelected(new Set());
+                }}
+                className={cn(
+                  'text-caption font-semibold',
+                  editMode ? 'text-accent' : 'text-[var(--text-secondary)]'
+                )}
+              >
+                {editMode ? 'Done' : 'Edit'}
+              </button>
+            )}
           </div>
         }
       />
 
       <div className="mb-5 flex gap-2">
-        {(['all', 'custom'] as Tab[]).map((t) => (
+        {(
+          [
+            { id: 'schedule' as Tab, label: 'MN 3C Schedule' },
+            { id: 'routines' as Tab, label: 'My Routines' },
+          ] as const
+        ).map(({ id, label }) => (
           <button
-            key={t}
+            key={id}
             type="button"
-            onClick={() => setTab(t)}
+            onClick={() => {
+              setTab(id);
+              setEditMode(false);
+              setSelected(new Set());
+            }}
             className={cn(
               'rounded-full px-4 py-2 text-caption font-medium',
-              tab === t
+              tab === id
                 ? 'bg-accent text-white'
                 : 'border border-[var(--border)] bg-bg-card text-[var(--text-secondary)]'
             )}
           >
-            {t === 'all' ? 'All Classes' : 'Custom Classes'}
-            {tab === t ? ' •' : ''}
+            {label}
           </button>
         ))}
       </div>
+
+      {tab === 'schedule' && (
+        <p className="text-caption mb-4 text-[var(--text-secondary)]">
+          Same for everyone in MN 3C.
+          {user?.role === 'admin' ? (
+            <>
+              {' '}
+              <Link href="/admin/schedule" className="font-medium text-accent">
+                Edit as admin →
+              </Link>
+            </>
+          ) : (
+            ' Managed by your class admin.'
+          )}
+        </p>
+      )}
+
+      {tab === 'routines' && (
+        <p className="text-caption mb-4 text-[var(--text-secondary)]">
+          Private to your account — study blocks, extra classes, or personal reminders.
+        </p>
+      )}
 
       {editMode && selected.size > 0 && (
         <button
@@ -112,11 +168,11 @@ export default function ManagePage() {
 
       {filtered.length === 0 ? (
         <EmptyState
-          title="No classes"
+          title={tab === 'schedule' ? 'No shared classes' : 'No routines yet'}
           message={
-            tab === 'custom'
-              ? 'Add a custom class with the + button.'
-              : 'Your timetable will appear here.'
+            tab === 'schedule'
+              ? 'The admin has not published the class schedule yet.'
+              : 'Add a personal routine with the + button. Only you will see it.'
           }
         />
       ) : (
@@ -125,7 +181,7 @@ export default function ManagePage() {
             <ClassCardCompact
               key={cls.id}
               cls={cls}
-              selectable={editMode}
+              selectable={editMode && canEdit}
               selected={selected.has(cls.id)}
               onSelect={toggleSelect}
             />
@@ -133,14 +189,16 @@ export default function ManagePage() {
         </div>
       )}
 
-      <Link
-        href="/manage/add"
-        className="fixed bottom-24 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-white shadow-md transition-transform active:scale-95"
-        style={{ right: 'max(20px, calc((100vw - 430px) / 2 + 20px))' }}
-        aria-label="Add class"
-      >
-        <Plus size={24} />
-      </Link>
+      {tab === 'routines' && (
+        <Link
+          href="/manage/add"
+          className="fixed bottom-24 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-white shadow-md transition-transform active:scale-95"
+          style={{ right: 'max(20px, calc((100vw - 430px) / 2 + 20px))' }}
+          aria-label="Add personal routine"
+        >
+          <Plus size={24} />
+        </Link>
+      )}
     </main>
   );
 }

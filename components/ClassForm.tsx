@@ -15,6 +15,7 @@ export interface ClassFormData {
   venue: string;
   lecturer: string;
   type: ClassType;
+  meetingUrl: string;
   notificationEnabled: boolean;
   notificationMinsBefore: number;
   notes: string;
@@ -25,6 +26,8 @@ interface ClassFormProps {
   onSubmit: (data: ClassFormData) => void;
   onDelete?: () => void;
   submitLabel?: string;
+  dayHint?: string;
+  existingTimes?: string[];
 }
 
 const REMINDER_OPTIONS = [5, 10, 15, 30];
@@ -34,6 +37,8 @@ export default function ClassForm({
   onSubmit,
   onDelete,
   submitLabel = 'Save Class',
+  dayHint,
+  existingTimes = [],
 }: ClassFormProps) {
   const [form, setForm] = useState<ClassFormData>({
     courseCode: initial?.courseCode ?? '',
@@ -44,6 +49,7 @@ export default function ClassForm({
     venue: initial?.venue ?? '',
     lecturer: initial?.lecturer ?? '',
     type: initial?.type ?? 'CLASS_PHYSICAL',
+    meetingUrl: initial?.meetingUrl ?? '',
     notificationEnabled: initial?.notificationEnabled ?? true,
     notificationMinsBefore: initial?.notificationMinsBefore ?? 10,
     notes: initial?.notes ?? '',
@@ -98,7 +104,21 @@ export default function ClassForm({
           Day
         </label>
         <DaySelector selected={form.day} onChange={(d) => update('day', d)} />
+        {dayHint && (
+          <p className="text-caption mt-2 text-[var(--text-secondary)]">{dayHint}</p>
+        )}
       </div>
+
+      {existingTimes.length > 0 && (
+        <div className="rounded-xl bg-[var(--bg-base)] p-3">
+          <p className="text-micro uppercase text-[var(--text-tertiary)]">
+            Already on {form.day}
+          </p>
+          <p className="text-caption mt-1 text-[var(--text-secondary)]">
+            {existingTimes.join(' · ')}
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -157,6 +177,24 @@ export default function ClassForm({
         </label>
         <TypeSelector value={form.type} onChange={(t) => update('type', t)} />
       </div>
+
+      {form.type === 'CLASS_VLE' && (
+        <div>
+          <label className="text-micro mb-1.5 block uppercase text-[var(--text-tertiary)]">
+            Zoom / Meeting Link
+          </label>
+          <input
+            type="url"
+            value={form.meetingUrl}
+            onChange={(e) => update('meetingUrl', e.target.value)}
+            className="w-full rounded-xl border border-[var(--border)] bg-bg-card px-4 py-3 text-body outline-none focus:ring-2 focus:ring-accent/30"
+            placeholder="https://zoom.us/j/..."
+          />
+          <p className="text-caption mt-1.5 text-[var(--text-tertiary)]">
+            Tap Join on the class card to open this link during class time.
+          </p>
+        </div>
+      )}
 
       <div className="flex items-center justify-between rounded-xl bg-bg-card p-4 shadow-sm">
         <div>

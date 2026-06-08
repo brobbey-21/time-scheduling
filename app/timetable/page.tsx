@@ -2,7 +2,8 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Calendar } from 'lucide-react';
+import Link from 'next/link';
+import { Calendar, Plus } from 'lucide-react';
 import ClassCard from '@/components/ClassCard';
 import DaySelector from '@/components/DaySelector';
 import EmptyState from '@/components/EmptyState';
@@ -34,11 +35,16 @@ function TimetableContent() {
 
   useEffect(() => {
     if (!selectedDay) return;
-    setLoaded(false);
-    getClassesByDay(selectedDay).then((cls) => {
-      setClasses(cls);
-      setLoaded(true);
-    });
+    const loadDay = () => {
+      setLoaded(false);
+      getClassesByDay(selectedDay).then((cls) => {
+        setClasses(cls);
+        setLoaded(true);
+      });
+    };
+    loadDay();
+    window.addEventListener('classes-changed', loadDay);
+    return () => window.removeEventListener('classes-changed', loadDay);
   }, [selectedDay]);
 
   const isWeekend = selectedDay ? isWeekendDay(selectedDay) : false;
@@ -87,14 +93,23 @@ function TimetableContent() {
           ))}
         </div>
       ) : classes.length === 0 ? (
-        <EmptyState
-          title={isWeekend ? 'No weekend classes' : 'No classes'}
-          message={
-            isWeekend
-              ? `Nothing scheduled for ${selectedDay}. Your weekday timetable stays separate.`
-              : `Nothing scheduled for ${selectedDay}.`
-          }
-        />
+        <div>
+          <EmptyState
+            title={isWeekend ? 'No weekend classes' : 'No classes'}
+            message={
+              isWeekend
+                ? `Nothing scheduled for ${selectedDay}. Add a routine if you have weekend classes.`
+                : `Nothing scheduled for ${selectedDay}. Add a weekly routine for this day.`
+            }
+          />
+          <Link
+            href={`/manage/add?day=${selectedDay}`}
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3.5 text-body font-semibold text-white"
+          >
+            <Plus size={18} />
+            Add {selectedDay} Routine
+          </Link>
+        </div>
       ) : (
         <div className="space-y-3">
           {classes.map((cls) => (
@@ -102,6 +117,15 @@ function TimetableContent() {
           ))}
         </div>
       )}
+
+      <Link
+        href={`/manage/add?day=${selectedDay}`}
+        className="fixed bottom-24 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-white shadow-lg transition-transform active:scale-95"
+        style={{ marginRight: 'max(0px, calc((100vw - 430px) / 2))' }}
+        aria-label={`Add personal routine for ${selectedDay}`}
+      >
+        <Plus size={24} />
+      </Link>
     </main>
   );
 }

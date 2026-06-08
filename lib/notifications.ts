@@ -122,11 +122,13 @@ export function scheduleClassNotifications(classes: ClassEntry[]): number {
     if (!cls.notificationEnabled) return;
 
     const notifyTime = notifyTimeForClass(cls);
+    const meetingUrl =
+      cls.type === 'CLASS_VLE' && cls.meetingUrl ? cls.meetingUrl : undefined;
     const scheduled = scheduleAt(`class-${cls.id}`, notifyTime, () => {
       void dispatchNotification(buildClassTitle(cls), {
         body: buildClassBody(cls),
         tag: `class-${cls.id}`,
-        data: { url: `/manage/${cls.id}` },
+        data: { url: meetingUrl ?? `/manage/${cls.id}` },
       });
     });
 

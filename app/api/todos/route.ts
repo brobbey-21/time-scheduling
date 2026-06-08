@@ -1,25 +1,27 @@
 import { NextResponse } from 'next/server';
-import { getCloudTodos, saveCloudTodos } from '@/lib/todo-cloud-storage';
+import { getSessionUser } from '@/lib/auth';
+import { getUserTodos, saveUserTodos } from '@/lib/user-data-storage';
 import type { TodoEntry } from '@/lib/types';
-import { isUpstashConfigured } from '@/lib/upstash';
 
 export async function GET() {
-  if (!isUpstashConfigured()) {
-    return NextResponse.json({ error: 'Sync not configured' }, { status: 503 });
+  const user = await getSessionUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const todos = await getCloudTodos();
-  return NextResponse.json({ todos: todos ?? [] });
+  const todos = await getUserTodos(user.id);
+  return NextResponse.json({ todos });
 }
 
 export async function PUT(request: Request) {
-  if (!isUpstashConfigured()) {
-    return NextResponse.json({ error: 'Sync not configured' }, { status: 503 });
+  const user = await getSessionUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const body = (await request.json()) as { todos?: TodoEntry[] };
   const todos = body.todos ?? [];
-  const saved = await saveCloudTodos(todos);
+  const saved = await saveUserTodos(user.id, todos);
 
   if (!saved) {
     return NextResponse.json({ error: 'Failed to save' }, { status: 500 });

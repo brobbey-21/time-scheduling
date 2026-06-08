@@ -16,11 +16,21 @@ export default function EditClassPage() {
   const [cls, setCls] = useState<ClassEntry | null>(null);
 
   useEffect(() => {
-    getClassById(id).then((c) => setCls(c ?? null));
-  }, [id]);
+    getClassById(id).then((c) => {
+      if (c?.isDefault) {
+        router.replace(`/manage/${id}`);
+        return;
+      }
+      setCls(c ?? null);
+    });
+  }, [id, router]);
 
   const handleSubmit = async (data: ClassFormData) => {
-    await updateClass(id, data);
+    const { meetingUrl, ...rest } = data;
+    await updateClass(id, {
+      ...rest,
+      meetingUrl: meetingUrl.trim() || undefined,
+    });
     notifyScheduleRefresh();
     router.push(`/manage/${id}`);
   };
@@ -48,7 +58,7 @@ export default function EditClassPage() {
       </Link>
       <h1 className="text-display mb-6">Edit Class</h1>
       <ClassForm
-        initial={cls}
+        initial={{ ...cls, meetingUrl: cls.meetingUrl ?? '' }}
         onSubmit={handleSubmit}
         onDelete={handleDelete}
         submitLabel="Save Changes"

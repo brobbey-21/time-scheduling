@@ -27,6 +27,7 @@ export interface ClassEntry {
   notificationEnabled: boolean;
   notificationMinsBefore: number;
   notes: string;
+  meetingUrl?: string;
   isDefault: boolean;
   createdAt: number;
   updatedAt: number;

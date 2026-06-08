@@ -1,18 +1,31 @@
 'use client';
 
 import { useEffect } from 'react';
+import { usePathname } from 'next/navigation';
+import { syncAllClasses } from '@/lib/class-sync';
 import { seedIfNeeded } from '@/lib/seed';
 import { notifyScheduleRefresh } from '@/lib/notifications';
 import { pullTodos } from '@/lib/todo-sync';
 
 export default function AppInitializer({ children }: { children: React.ReactNode }) {
-  useEffect(() => {
-    seedIfNeeded().then(() => {
-      notifyScheduleRefresh();
-      void pullTodos();
-    });
+  const pathname = usePathname();
+  const isPublic = pathname === '/login' || pathname === '/offline';
 
-    const sync = () => void pullTodos();
+  useEffect(() => {
+    if (isPublic) return;
+
+    const init = async () => {
+      await Promise.all([syncAllClasses(), pullTodos()]);
+      await seedIfNeeded();
+      notifyScheduleRefresh();
+    };
+
+    void init();
+
+    const sync = () => {
+      void syncAllClasses();
+      void pullTodos();
+    };
     window.addEventListener('online', sync);
     window.addEventListener('focus', sync);
     document.addEventListener('visibilitychange', () => {
@@ -23,7 +36,7 @@ export default function AppInitializer({ children }: { children: React.ReactNode
       window.removeEventListener('online', sync);
       window.removeEventListener('focus', sync);
     };
-  }, []);
+  }, [isPublic]);
 
   return <>{children}</>;
 }

@@ -12,6 +12,8 @@ import {
   MapPin,
   MoreHorizontal,
   Pencil,
+  Shield,
+  Video,
   Wifi,
   type LucideIcon,
 } from 'lucide-react';
@@ -38,6 +40,7 @@ export default function ClassDetailPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [editingNotes, setEditingNotes] = useState(false);
   const [notes, setNotes] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     getClassById(id).then((c) => {
@@ -46,6 +49,9 @@ export default function ClassDetailPage() {
         setNotes(c.notes);
       }
     });
+    fetch('/api/auth/me')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setIsAdmin(data?.user?.role === 'admin'));
   }, [id]);
 
   if (!cls) {
@@ -56,15 +62,18 @@ export default function ClassDetailPage() {
     );
   }
 
+  const isShared = cls.isDefault;
+  const canEdit = !isShared || isAdmin;
   const config = TYPE_CONFIG[cls.type];
   const Icon = ICONS[config.icon];
 
   const handleDelete = async () => {
-    await deleteClass(id);
-    router.push('/manage');
+    const ok = await deleteClass(id);
+    if (ok) router.push('/manage');
   };
 
   const handleToggleReminder = async () => {
+    if (!canEdit) return;
     const updated = await updateClass(id, {
       notificationEnabled: !cls.notificationEnabled,
     });
@@ -75,6 +84,7 @@ export default function ClassDetailPage() {
   };
 
   const handleSaveNotes = async () => {
+    if (!canEdit) return;
     const updated = await updateClass(id, { notes });
     if (updated) {
       setCls(updated);
@@ -103,34 +113,47 @@ export default function ClassDetailPage() {
         >
           <ArrowLeft size={16} /> Back
         </Link>
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="p-2 text-[var(--text-secondary)]"
-          >
-            <MoreHorizontal size={20} />
-          </button>
-          {menuOpen && (
-            <div className="absolute right-0 top-full z-10 mt-1 w-40 rounded-xl bg-bg-card py-1 shadow-md">
-              <Link
-                href={`/manage/${id}/edit`}
-                className="flex items-center gap-2 px-4 py-2.5 text-caption hover:bg-[var(--bg-card-hover)]"
-                onClick={() => setMenuOpen(false)}
-              >
-                <Pencil size={14} /> Edit
-              </Link>
-              <button
-                type="button"
-                onClick={handleDelete}
-                className="flex w-full items-center gap-2 px-4 py-2.5 text-caption text-red-500 hover:bg-red-50"
-              >
-                Delete
-              </button>
-            </div>
-          )}
-        </div>
+        {canEdit && (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="p-2 text-[var(--text-secondary)]"
+            >
+              <MoreHorizontal size={20} />
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 top-full z-10 mt-1 w-40 rounded-xl bg-bg-card py-1 shadow-md">
+                <Link
+                  href={isShared ? `/admin/schedule/${id}/edit` : `/manage/${id}/edit`}
+                  className="flex items-center gap-2 px-4 py-2.5 text-caption hover:bg-[var(--bg-card-hover)]"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <Pencil size={14} /> Edit
+                </Link>
+                {!isShared && (
+                  <button
+                    type="button"
+                    onClick={handleDelete}
+                    className="flex w-full items-center gap-2 px-4 py-2.5 text-caption text-red-500 hover:bg-red-50"
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {isShared && (
+        <div className="mb-4 flex items-center gap-2 rounded-xl bg-[var(--accent-light)] px-4 py-3">
+          <Shield size={16} className="shrink-0 text-accent" />
+          <p className="text-caption text-[var(--text-secondary)]">
+            Official MN 3C class — same for everyone. Only admin can edit.
+          </p>
+        </div>
+      )}
 
       <div
         className="card mb-6"
@@ -172,42 +195,46 @@ export default function ClassDetailPage() {
         ))}
       </div>
 
-      <div className="card mb-4 flex items-center justify-between">
-        <div>
-          <p className="text-body">Reminder</p>
-          <p className="text-caption text-[var(--text-secondary)]">
-            {cls.notificationMinsBefore} minutes before
-          </p>
-        </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={cls.notificationEnabled}
-          onClick={handleToggleReminder}
-          className={`relative h-7 w-12 rounded-full transition-colors ${
-            cls.notificationEnabled ? 'bg-accent' : 'bg-[var(--border)]'
-          }`}
-        >
-          <span
-            className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
-              cls.notificationEnabled ? 'left-[22px]' : 'left-0.5'
+      {canEdit && (
+        <div className="card mb-4 flex items-center justify-between">
+          <div>
+            <p className="text-body">Reminder</p>
+            <p className="text-caption text-[var(--text-secondary)]">
+              {cls.notificationMinsBefore} minutes before
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={cls.notificationEnabled}
+            onClick={handleToggleReminder}
+            className={`relative h-7 w-12 rounded-full transition-colors ${
+              cls.notificationEnabled ? 'bg-accent' : 'bg-[var(--border)]'
             }`}
-          />
-        </button>
-      </div>
+          >
+            <span
+              className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                cls.notificationEnabled ? 'left-[22px]' : 'left-0.5'
+              }`}
+            />
+          </button>
+        </div>
+      )}
 
       <div className="card mb-6">
         <div className="mb-2 flex items-center justify-between">
           <span className="text-caption text-[var(--text-tertiary)]">Notes</span>
-          <button
-            type="button"
-            onClick={() =>
-              editingNotes ? handleSaveNotes() : setEditingNotes(true)
-            }
-            className="text-[var(--text-tertiary)]"
-          >
-            <Pencil size={14} />
-          </button>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() =>
+                editingNotes ? handleSaveNotes() : setEditingNotes(true)
+              }
+              className="text-[var(--text-tertiary)]"
+            >
+              <Pencil size={14} />
+            </button>
+          )}
         </div>
         {editingNotes ? (
           <textarea
@@ -219,10 +246,21 @@ export default function ClassDetailPage() {
           />
         ) : (
           <p className="text-body whitespace-pre-wrap text-[var(--text-secondary)]">
-            {cls.notes || 'No notes yet.'}
+            {cls.notes || (isShared ? 'No notes from admin.' : 'No notes yet.')}
           </p>
         )}
       </div>
+
+      {cls.type === 'CLASS_VLE' && cls.meetingUrl && (
+        <button
+          type="button"
+          onClick={() => window.open(cls.meetingUrl, '_blank', 'noopener,noreferrer')}
+          className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3.5 text-body font-semibold text-white shadow-sm"
+        >
+          <Video size={18} />
+          Join Zoom / Online Class
+        </button>
+      )}
 
       <button
         type="button"

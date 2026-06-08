@@ -1,4 +1,6 @@
-import type { ClassEntry } from './types';
+import type { ClassEntry, ClassType } from './types';
+
+const OFFICIAL_TYPES: ClassType[] = ['CLASS_PHYSICAL', 'CLASS_VLE', 'PRACTICAL'];
 
 export const DEFAULT_CLASSES: Omit<ClassEntry, 'createdAt' | 'updatedAt'>[] = [
   { id: 'mon-1', courseCode: 'REST', courseName: 'Morning Rest', day: 'Monday', startTime: '07:00', endTime: '09:00', venue: '', lecturer: '', type: 'REST', notificationEnabled: false, notificationMinsBefore: 10, notes: '', isDefault: true },
@@ -57,3 +59,8 @@ export const DEFAULT_CLASSES: Omit<ClassEntry, 'createdAt' | 'updatedAt'>[] = [
   { id: 'fri-9', courseCode: 'MN 382', courseName: 'Mine Machinery', day: 'Friday', startTime: '18:30', endTime: '19:30', venue: '', lecturer: '', type: 'STUDY', notificationEnabled: true, notificationMinsBefore: 5, notes: 'End of week catch-up.', isDefault: true },
   { id: 'fri-10', courseCode: 'REST', courseName: 'Free Time', day: 'Friday', startTime: '19:30', endTime: '20:30', venue: '', lecturer: '', type: 'REST', notificationEnabled: false, notificationMinsBefore: 10, notes: 'Rest and recharge.', isDefault: true },
 ];
+
+/** Official MN 3C class times — shared by all students, managed by admin. */
+export const OFFICIAL_CLASSES = DEFAULT_CLASSES.filter((c) =>
+  OFFICIAL_TYPES.includes(c.type)
+);

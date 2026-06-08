@@ -20,8 +20,8 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Isaac's Class Manager",
-  description: 'Personal class schedule and todo manager — UMaT Sem 2',
+  title: 'Class Time — MN 3C',
+  description: 'MN 3C class schedule and personal routines — UMaT',
   manifest: '/manifest.json',
   icons: {
     icon: [

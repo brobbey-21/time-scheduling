@@ -30,6 +30,7 @@ export default function TodayPage() {
   const [todayDay, setTodayDay] = useState<DayOfWeek | null>(null);
   const [classes, setClasses] = useState<ClassEntry[]>([]);
   const [todos, setTodos] = useState<TodoEntry[]>([]);
+  const [userName, setUserName] = useState('there');
   const [sheetOpen, setSheetOpen] = useState(false);
   const [newTodo, setNewTodo] = useState('');
   const [loaded, setLoaded] = useState(false);
@@ -54,6 +55,14 @@ export default function TodayPage() {
     setViewDate(now);
     setTodayDay(day);
     load(day, date);
+
+    fetch('/api/auth/me')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.user?.name) {
+          setUserName(data.user.name.split(' ')[0]);
+        }
+      });
   }, [load]);
 
   useEffect(() => {
@@ -61,7 +70,11 @@ export default function TodayPage() {
       if (todayDay && dateStr) load(todayDay, dateStr);
     };
     window.addEventListener('todos-changed', refresh);
-    return () => window.removeEventListener('todos-changed', refresh);
+    window.addEventListener('classes-changed', refresh);
+    return () => {
+      window.removeEventListener('todos-changed', refresh);
+      window.removeEventListener('classes-changed', refresh);
+    };
   }, [load, todayDay, dateStr]);
 
   const nextUp = classes.find((c) => isClassUpcoming(c.startTime));
@@ -148,7 +161,7 @@ export default function TodayPage() {
             <p className="text-caption text-[var(--text-secondary)]">
               {getGreeting()},
             </p>
-            <h1 className="text-display">Isaac</h1>
+            <h1 className="text-display">{userName}</h1>
             <p className="text-caption mt-1 text-[var(--text-secondary)]">
               {formatDateLong(viewDate)}
             </p>
