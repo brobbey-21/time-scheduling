@@ -4,6 +4,7 @@ import {
   sessionCookieOptions,
   verifyPassword,
 } from '@/lib/auth';
+import { authErrorResponse } from '@/lib/auth-errors';
 import { ensureBootstrapAdmins, findUserByEmail } from '@/lib/user-storage';
 
 export async function POST(request: Request) {
@@ -26,7 +27,13 @@ export async function POST(request: Request) {
     await ensureBootstrapAdmins();
     const user = await findUserByEmail(email);
     if (!user || !(await verifyPassword(password, user.passwordHash))) {
-      return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
+      return NextResponse.json(
+        {
+          error:
+            'Invalid email or password. If you have not signed up on this site yet, use Create Account first.',
+        },
+        { status: 401 }
+      );
     }
 
     if (user.cohort !== 'MN 3C') {
@@ -55,7 +62,7 @@ export async function POST(request: Request) {
     });
     response.cookies.set(sessionCookieOptions(token));
     return response;
-  } catch {
-    return NextResponse.json({ error: 'Login failed' }, { status: 500 });
+  } catch (err) {
+    return authErrorResponse(err, 'login');
   }
 }

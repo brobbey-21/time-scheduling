@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import type { ClassEntry, TodoEntry } from './types';
 import type { UserMeta } from './auth-types';
+import { assertPersistentStorage } from './storage-config';
 import { isUpstashConfigured, upstashCommand } from './upstash';
 
 const DATA_DIR = path.join(process.cwd(), '.data', 'users');
@@ -66,6 +67,7 @@ async function setValue(
   file: string,
   value: unknown
 ): Promise<boolean> {
+  assertPersistentStorage();
   if (isUpstashConfigured()) {
     const ok = await writeRedis(redisKey, value);
     if (ok) return true;

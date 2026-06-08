@@ -4,6 +4,7 @@ import {
   hashPassword,
   sessionCookieOptions,
 } from '@/lib/auth';
+import { authErrorResponse } from '@/lib/auth-errors';
 import { createUser } from '@/lib/user-storage';
 
 export async function POST(request: Request) {
@@ -56,9 +57,6 @@ export async function POST(request: Request) {
     response.cookies.set(sessionCookieOptions(token));
     return response;
   } catch (err) {
-    if (err instanceof Error && err.message === 'EMAIL_TAKEN') {
-      return NextResponse.json({ error: 'Email already registered' }, { status: 409 });
-    }
-    return NextResponse.json({ error: 'Registration failed' }, { status: 500 });
+    return authErrorResponse(err, 'register');
   }
 }

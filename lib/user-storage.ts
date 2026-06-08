@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import { assertPersistentStorage } from './storage-config';
 import { isUpstashConfigured, upstashCommand } from './upstash';
 import {
   getBootstrapAdminEmails,
@@ -77,6 +78,7 @@ async function getStore(): Promise<UserStore> {
 }
 
 async function saveStore(store: UserStore): Promise<void> {
+  assertPersistentStorage();
   const payload = { ...store, updatedAt: Date.now() };
   const savedToRedis = await writeRedisStore(payload);
   if (!savedToRedis) {

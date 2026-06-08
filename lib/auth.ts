@@ -1,4 +1,4 @@
-import bcrypt from 'bcryptjs';
+import { compare, hash } from 'bcryptjs';
 
 export {
   SESSION_COOKIE,
@@ -10,12 +10,12 @@ export {
 } from './auth-session';
 
 export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 10);
+  return hash(password, 10);
 }
 
 export async function verifyPassword(
   password: string,
-  hash: string
+  passwordHash: string
 ): Promise<boolean> {
-  return bcrypt.compare(password, hash);
+  return compare(password, passwordHash);
 }

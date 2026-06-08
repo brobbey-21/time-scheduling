@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import type { ClassEntry } from './types';
 import { OFFICIAL_CLASSES } from './timetable.config';
+import { assertPersistentStorage } from './storage-config';
 import { isUpstashConfigured, upstashCommand } from './upstash';
 
 const DATA_FILE = path.join(process.cwd(), '.data', 'shared', 'mn3c-schedule.json');
@@ -61,6 +62,7 @@ export async function getSharedSchedule(): Promise<ClassEntry[]> {
 }
 
 export async function saveSharedSchedule(classes: ClassEntry[]): Promise<boolean> {
+  assertPersistentStorage();
   const payload = classes.map((c) => ({ ...c, isDefault: true }));
   if (isUpstashConfigured()) {
     const ok = await writeRedis(payload);
