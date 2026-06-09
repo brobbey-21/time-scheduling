@@ -1,6 +1,13 @@
 import type { ClassEntry, DayOfWeek, TodoEntry } from './types';
 import { DAYS } from './types';
-import { getDayNameFromDate, parseDateString, timeToMinutes, toDateString } from './utils';
+import {
+  formatDurationBetween,
+  formatTime12,
+  getDayNameFromDate,
+  parseDateString,
+  timeToMinutes,
+  toDateString,
+} from './utils';
 
 export const SCHEDULE_LOOKAHEAD_DAYS = 7;
 
@@ -69,14 +76,34 @@ export function buildClassReminders(
     if (!cls.notificationEnabled) return;
 
     const dates = datesForWeekday(cls.day, from, SCHEDULE_LOOKAHEAD_DAYS);
-    const meetingUrl =
-      cls.type === 'CLASS_VLE' && cls.meetingUrl ? cls.meetingUrl : undefined;
 
     for (const date of dates) {
+      const dateStr = toDateString(date);
+
+      if (cls.type === 'REST') {
+        const [eh, em] = cls.endTime.split(':').map(Number);
+        const fireAt = new Date(date);
+        fireAt.setHours(eh, em, 0, 0);
+        if (fireAt.getTime() <= now) continue;
+
+        const duration = formatDurationBetween(cls.startTime, cls.endTime);
+        slots.push({
+          id: `rest-end-${cls.id}-${dateStr}`,
+          fireAt,
+          title: `Break over — ${duration} rest done`,
+          body: `${cls.courseName || 'Rest'} finished at ${formatTime12(cls.endTime)}. Time for your next block.`,
+          url: `/timetable?day=${encodeURIComponent(cls.day)}`,
+          tag: `rest-end-${cls.id}-${dateStr}`,
+          requireInteraction: true,
+        });
+        continue;
+      }
+
+      const meetingUrl =
+        cls.type === 'CLASS_VLE' && cls.meetingUrl ? cls.meetingUrl : undefined;
       const fireAt = classNotifyAt(cls, date);
       if (fireAt.getTime() <= now) continue;
 
-      const dateStr = toDateString(date);
       slots.push({
         id: `class-${cls.id}-${dateStr}`,
         fireAt,

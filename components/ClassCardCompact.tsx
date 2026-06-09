@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import type { ClassEntry } from '@/lib/types';
-import { formatTime12 } from '@/lib/utils';
+import { formatDurationBetween, formatTime12 } from '@/lib/utils';
 import TypeBadge from './TypeBadge';
 
 interface ClassCardCompactProps {
@@ -52,6 +52,8 @@ export default function ClassCardCompact({
         <div className="mt-1 flex flex-wrap items-center gap-2">
           <p className="text-caption text-[var(--text-tertiary)]">
             {cls.day} · {formatTime12(cls.startTime)}
+            {cls.type === 'REST' &&
+              ` · ${formatDurationBetween(cls.startTime, cls.endTime)}`}
           </p>
           {label && (
             <span

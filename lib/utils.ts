@@ -79,6 +79,33 @@ export function timeToMinutes(time: string): number {
   return h * 60 + m;
 }
 
+/** Human-readable duration, e.g. "15 min", "1 hr", "1 hr 30 min". */
+export function formatDurationMinutes(totalMinutes: number): string {
+  const mins = Math.max(0, Math.round(totalMinutes));
+  if (mins < 60) return `${mins} min`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (m === 0) return h === 1 ? '1 hr' : `${h} hr`;
+  return `${h} hr ${m} min`;
+}
+
+export function durationMinutesBetween(startTime: string, endTime: string): number {
+  return Math.max(0, timeToMinutes(endTime) - timeToMinutes(startTime));
+}
+
+export function formatDurationBetween(startTime: string, endTime: string): string {
+  return formatDurationMinutes(durationMinutesBetween(startTime, endTime));
+}
+
+export function formatRestLabel(startTime: string, endTime: string): string {
+  return `Rest for ${formatDurationBetween(startTime, endTime)}`;
+}
+
+export function minutesRemainingInBlock(endTime: string, now: Date = new Date()): number {
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  return Math.max(0, timeToMinutes(endTime) - nowMins);
+}
+
 export function isClassActive(startTime: string, endTime: string): boolean {
   const now = new Date();
   const nowMins = now.getHours() * 60 + now.getMinutes();

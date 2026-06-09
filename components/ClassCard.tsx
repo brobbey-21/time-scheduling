@@ -4,7 +4,12 @@ import Link from 'next/link';
 import { Video } from 'lucide-react';
 import type { ClassEntry } from '@/lib/types';
 import { TYPE_CONFIG } from '@/lib/types';
-import { formatTime12, isClassActive } from '@/lib/utils';
+import {
+  formatDurationBetween,
+  formatTime12,
+  isClassActive,
+  minutesRemainingInBlock,
+} from '@/lib/utils';
 import TypeBadge from './TypeBadge';
 
 interface ClassCardProps {
@@ -61,10 +66,24 @@ export default function ClassCard({ cls, showTime = false }: ClassCardProps) {
             <h3 className="text-title mt-1 leading-snug text-[var(--text-primary)]">
               {cls.courseName}
             </h3>
-            {(cls.lecturer || cls.venue) && (
+            {cls.type === 'REST' ? (
               <p className="text-caption mt-2 text-[var(--text-secondary)]">
-                {[cls.lecturer, cls.venue].filter(Boolean).join('  ·  ')}
+                {active
+                  ? `${minutesRemainingInBlock(cls.endTime)} min left · ends ${formatTime12(cls.endTime)}`
+                  : `${formatDurationBetween(cls.startTime, cls.endTime)} · until ${formatTime12(cls.endTime)}`}
+                {cls.notificationEnabled && !active && (
+                  <span className="text-[var(--text-tertiary)]">
+                    {' '}
+                    · reminder when done
+                  </span>
+                )}
               </p>
+            ) : (
+              (cls.lecturer || cls.venue) && (
+                <p className="text-caption mt-2 text-[var(--text-secondary)]">
+                  {[cls.lecturer, cls.venue].filter(Boolean).join('  ·  ')}
+                </p>
+              )
             )}
           </div>
         </div>

@@ -2,7 +2,13 @@
 
 import { useState } from 'react';
 import type { ClassType, DayOfWeek } from '@/lib/types';
-import { detectTypeFromVenue } from '@/lib/utils';
+import {
+  detectTypeFromVenue,
+  durationMinutesBetween,
+  formatDurationBetween,
+  formatRestLabel,
+  formatTime12,
+} from '@/lib/utils';
 import DaySelector from './DaySelector';
 import TypeSelector from './TypeSelector';
 
@@ -62,9 +68,26 @@ export default function ClassForm({
         const detected = detectTypeFromVenue(value);
         if (detected) next.type = detected;
       }
+      if (key === 'type' && value === 'REST') {
+        next.courseCode = 'REST';
+        next.courseName = formatRestLabel(next.startTime, next.endTime);
+        next.notificationEnabled = true;
+        next.notificationMinsBefore = 0;
+      }
+      if (
+        (key === 'startTime' || key === 'endTime') &&
+        next.type === 'REST'
+      ) {
+        next.courseName = formatRestLabel(next.startTime, next.endTime);
+      }
       return next;
     });
   };
+
+  const restDurationMins =
+    form.type === 'REST'
+      ? durationMinutesBetween(form.startTime, form.endTime)
+      : 0;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,6 +140,24 @@ export default function ClassForm({
           <p className="text-caption mt-1 text-[var(--text-secondary)]">
             {existingTimes.join(' · ')}
           </p>
+        </div>
+      )}
+
+      {form.type === 'REST' && (
+        <div className="rounded-xl bg-[var(--type-rest-bg)] p-4">
+          <p className="text-body font-semibold text-[var(--type-rest-text)]">
+            {restDurationMins > 0
+              ? formatRestLabel(form.startTime, form.endTime)
+              : 'Set start and end times'}
+          </p>
+          {restDurationMins > 0 && (
+            <p className="text-caption mt-1 text-[var(--text-secondary)]">
+              {formatTime12(form.startTime)} – {formatTime12(form.endTime)}
+              {form.notificationEnabled
+                ? ' · you’ll get a reminder when the break ends'
+                : ''}
+            </p>
+          )}
         </div>
       )}
 
@@ -198,21 +239,29 @@ export default function ClassForm({
 
       <div className="flex items-center justify-between rounded-xl bg-bg-card p-4 shadow-sm">
         <div>
-          <p className="text-body">Notify before class</p>
-          <select
-            value={form.notificationMinsBefore}
-            onChange={(e) =>
-              update('notificationMinsBefore', parseInt(e.target.value, 10))
-            }
-            className="text-caption mt-1 text-[var(--text-secondary)] bg-transparent outline-none"
-            disabled={!form.notificationEnabled}
-          >
-            {REMINDER_OPTIONS.map((m) => (
-              <option key={m} value={m}>
-                {m} min before
-              </option>
-            ))}
-          </select>
+          <p className="text-body">
+            {form.type === 'REST' ? 'Remind when break ends' : 'Notify before class'}
+          </p>
+          {form.type === 'REST' ? (
+            <p className="text-caption mt-1 text-[var(--text-secondary)]">
+              Alert at {formatTime12(form.endTime)} when rest is over
+            </p>
+          ) : (
+            <select
+              value={form.notificationMinsBefore}
+              onChange={(e) =>
+                update('notificationMinsBefore', parseInt(e.target.value, 10))
+              }
+              className="text-caption mt-1 text-[var(--text-secondary)] bg-transparent outline-none"
+              disabled={!form.notificationEnabled}
+            >
+              {REMINDER_OPTIONS.map((m) => (
+                <option key={m} value={m}>
+                  {m} min before
+                </option>
+              ))}
+            </select>
+          )}
         </div>
         <button
           type="button"

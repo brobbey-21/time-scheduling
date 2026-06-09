@@ -1,7 +1,7 @@
 import { PLANNER_VERSION } from './study-profile';
 import type { ClassEntry, ClassType, DayOfWeek, StudyPreferences } from './types';
 import { DAYS } from './types';
-import { timeToMinutes } from './utils';
+import { formatRestLabel, formatTime12, timeToMinutes } from './utils';
 
 interface TimeInterval {
   start: number;
@@ -161,19 +161,21 @@ function fillInterval(
     const slotLeft = interval.end - cursor;
     if (needsBreak && slotLeft >= prefs.breakMinutes) {
       const breakEnd = Math.min(cursor + prefs.breakMinutes, interval.end);
+      const startTime = minutesToTime(cursor);
+      const endTime = minutesToTime(breakEnd);
       blocks.push({
         id: `plan-${daySlug(day)}-${blockIndex.value++}`,
         courseCode: 'REST',
-        courseName: 'Rest break',
+        courseName: formatRestLabel(startTime, endTime),
         day,
-        startTime: minutesToTime(cursor),
-        endTime: minutesToTime(breakEnd),
+        startTime,
+        endTime,
         venue: '',
         lecturer: '',
         type: 'REST',
-        notificationEnabled: false,
+        notificationEnabled: true,
         notificationMinsBefore: 0,
-        notes: 'Short break between study blocks.',
+        notes: `Until ${formatTime12(endTime)}. You'll be reminded when this break ends.`,
         isDefault: false,
         plannerGenerated: true,
         plannerVersion: PLANNER_VERSION,
