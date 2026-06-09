@@ -235,7 +235,7 @@ export default function TodayPage() {
         ) : (
           <div className="space-y-3">
             {classes.map((cls) => (
-              <ClassCard key={cls.id} cls={cls} />
+              <ClassCard key={cls.id} cls={cls} showTime />
             ))}
           </div>
         )}

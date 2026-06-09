@@ -22,7 +22,7 @@ import { deleteClass, getClassById, updateClass } from '@/lib/db';
 import { notifyScheduleRefresh } from '@/lib/notifications';
 import { TYPE_CONFIG, TYPE_LABELS } from '@/lib/types';
 import type { ClassEntry } from '@/lib/types';
-import { formatTimeRange, generateICS } from '@/lib/utils';
+import { formatTime12, formatTimeRange, generateICS } from '@/lib/utils';
 
 const ICONS: Record<string, LucideIcon> = {
   MapPin,
@@ -200,7 +200,9 @@ export default function ClassDetailPage() {
           <div>
             <p className="text-body">Reminder</p>
             <p className="text-caption text-[var(--text-secondary)]">
-              {cls.notificationMinsBefore} minutes before
+              {cls.type === 'REST'
+                ? `Alert at ${formatTime12(cls.endTime)} when break ends`
+                : `${cls.notificationMinsBefore} minutes before`}
             </p>
           </div>
           <button

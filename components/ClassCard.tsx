@@ -7,6 +7,7 @@ import { TYPE_CONFIG } from '@/lib/types';
 import {
   formatDurationBetween,
   formatTime12,
+  formatTimeRange,
   isClassActive,
   minutesRemainingInBlock,
 } from '@/lib/utils';
@@ -33,9 +34,12 @@ export default function ClassCard({ cls, showTime = false }: ClassCardProps) {
       <Link href={`/manage/${cls.id}`} className="block">
         <div className="flex gap-3">
           {showTime && (
-            <div className="flex shrink-0 flex-col items-center pt-0.5">
-              <span className="text-caption font-semibold text-[var(--text-primary)]">
+            <div className="flex w-[4.5rem] shrink-0 flex-col items-center pt-0.5 text-center">
+              <span className="text-caption font-semibold leading-tight text-[var(--text-primary)]">
                 {formatTime12(cls.startTime)}
+              </span>
+              <span className="text-micro mt-0.5 leading-tight text-[var(--text-tertiary)]">
+                {formatTime12(cls.endTime)}
               </span>
               {active && (
                 <span className="mt-1 h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
@@ -66,24 +70,28 @@ export default function ClassCard({ cls, showTime = false }: ClassCardProps) {
             <h3 className="text-title mt-1 leading-snug text-[var(--text-primary)]">
               {cls.courseName}
             </h3>
-            {cls.type === 'REST' ? (
-              <p className="text-caption mt-2 text-[var(--text-secondary)]">
+            <p className="text-caption mt-2 font-medium text-[var(--text-secondary)]">
+              {formatTimeRange(cls.startTime, cls.endTime)}
+              {cls.type === 'REST' && (
+                <span className="font-normal text-[var(--text-tertiary)]">
+                  {' '}
+                  · {formatDurationBetween(cls.startTime, cls.endTime)}
+                </span>
+              )}
+            </p>
+            {cls.type === 'REST' && (
+              <p className="text-caption mt-1 text-[var(--text-tertiary)]">
                 {active
-                  ? `${minutesRemainingInBlock(cls.endTime)} min left · ends ${formatTime12(cls.endTime)}`
-                  : `${formatDurationBetween(cls.startTime, cls.endTime)} · until ${formatTime12(cls.endTime)}`}
-                {cls.notificationEnabled && !active && (
-                  <span className="text-[var(--text-tertiary)]">
-                    {' '}
-                    · reminder when done
-                  </span>
-                )}
+                  ? `${minutesRemainingInBlock(cls.endTime)} min left`
+                  : cls.notificationEnabled
+                    ? 'Reminder when break ends'
+                    : null}
               </p>
-            ) : (
-              (cls.lecturer || cls.venue) && (
-                <p className="text-caption mt-2 text-[var(--text-secondary)]">
-                  {[cls.lecturer, cls.venue].filter(Boolean).join('  ·  ')}
-                </p>
-              )
+            )}
+            {cls.type !== 'REST' && (cls.lecturer || cls.venue) && (
+              <p className="text-caption mt-1 text-[var(--text-secondary)]">
+                {[cls.lecturer, cls.venue].filter(Boolean).join('  ·  ')}
+              </p>
             )}
           </div>
         </div>
