@@ -19,7 +19,13 @@ export function isVapidConfigured(): boolean {
 
 export async function sendWebPush(
   subscription: PushSubscriptionJSON,
-  payload: { title: string; body: string; url: string; tag?: string }
+  payload: {
+    title: string;
+    body: string;
+    url: string;
+    tag?: string;
+    requireInteraction?: boolean;
+  }
 ): Promise<void> {
   if (!configureWebPush()) {
     throw new Error('VAPID keys are not configured');
@@ -28,7 +34,7 @@ export async function sendWebPush(
   await webpush.sendNotification(
     subscription as webpush.PushSubscription,
     JSON.stringify(payload),
-    { TTL: 60 * 60 }
+    { TTL: 60 * 60 * 4 }
   );
 }
 

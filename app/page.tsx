@@ -9,7 +9,7 @@ import EmptyState from '@/components/EmptyState';
 import IOSBanner from '@/components/IOSBanner';
 import NextUpCard from '@/components/NextUpCard';
 import TodoItem from '@/components/TodoItem';
-import { addTodo, getClassesByDay, getTodosByDate } from '@/lib/db';
+import { addTodo, getClassesByDay, getSetting, getTodosByDate } from '@/lib/db';
 import {
   getNotificationPermission,
   notifyScheduleRefresh,
@@ -33,6 +33,9 @@ export default function TodayPage() {
   const [userName, setUserName] = useState('there');
   const [sheetOpen, setSheetOpen] = useState(false);
   const [newTodo, setNewTodo] = useState('');
+  const [taskRemind, setTaskRemind] = useState(true);
+  const [taskReminderTime, setTaskReminderTime] = useState('');
+  const [defaultTaskReminder, setDefaultTaskReminder] = useState('18:00');
   const [loaded, setLoaded] = useState(false);
 
   const isWeekend = todayDay ? isWeekendDay(todayDay) : false;
@@ -55,6 +58,7 @@ export default function TodayPage() {
     setViewDate(now);
     setTodayDay(day);
     load(day, date);
+    getSetting('defaultTaskReminderTime', '18:00').then(setDefaultTaskReminder);
 
     fetch('/api/auth/me')
       .then((res) => (res.ok ? res.json() : null))
@@ -87,6 +91,7 @@ export default function TodayPage() {
     if (todo && todayDay) {
       await updateTodo(id, { completed: !todo.completed });
       load(todayDay, dateStr);
+      notifyScheduleRefresh();
     }
   };
 
@@ -103,6 +108,14 @@ export default function TodayPage() {
     const { deleteTodo } = await import('@/lib/db');
     await deleteTodo(id);
     if (todayDay) load(todayDay, dateStr);
+    notifyScheduleRefresh();
+  };
+
+  const handleSetReminder = async (id: string, reminderTime: string | undefined) => {
+    const { updateTodo } = await import('@/lib/db');
+    await updateTodo(id, { reminderTime });
+    if (todayDay) load(todayDay, dateStr);
+    notifyScheduleRefresh();
   };
 
   const handleAddTodo = async () => {
@@ -112,8 +125,12 @@ export default function TodayPage() {
       text: newTodo.trim(),
       completed: false,
       starred: false,
+      reminderTime: taskRemind
+        ? taskReminderTime || defaultTaskReminder
+        : undefined,
     });
     setNewTodo('');
+    setTaskReminderTime('');
     setSheetOpen(false);
     notifyScheduleRefresh();
     load(todayDay, dateStr);
@@ -261,6 +278,7 @@ export default function TodayPage() {
                 onToggle={handleToggleTodo}
                 onStar={handleStarTodo}
                 onDelete={handleDeleteTodo}
+                onSetReminder={handleSetReminder}
               />
             ))}
           </div>
@@ -290,6 +308,32 @@ export default function TodayPage() {
           className="mb-4 w-full rounded-xl border border-[var(--border)] px-4 py-3 text-body outline-none focus:ring-2 focus:ring-accent/30"
           onKeyDown={(e) => e.key === 'Enter' && handleAddTodo()}
         />
+        <label className="mb-3 flex items-center justify-between">
+          <span className="text-caption text-[var(--text-secondary)]">Remind me</span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={taskRemind}
+            onClick={() => setTaskRemind((v) => !v)}
+            className={`relative h-6 w-10 rounded-full transition-colors ${
+              taskRemind ? 'bg-accent' : 'bg-[var(--border)]'
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                taskRemind ? 'left-[18px]' : 'left-0.5'
+              }`}
+            />
+          </button>
+        </label>
+        {taskRemind && (
+          <input
+            type="time"
+            value={taskReminderTime || defaultTaskReminder}
+            onChange={(e) => setTaskReminderTime(e.target.value)}
+            className="mb-4 w-full rounded-xl border border-[var(--border)] px-4 py-3 text-body outline-none"
+          />
+        )}
         <button
           type="button"
           onClick={handleAddTodo}

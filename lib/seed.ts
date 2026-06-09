@@ -6,5 +6,8 @@ export async function seedIfNeeded(): Promise<void> {
 
   await setSetting('notificationsEnabled', true);
   await setSetting('defaultReminderMins', 10);
+  await setSetting('defaultTaskReminderTime', '18:00');
+  await setSetting('endOfDayReminderEnabled', true);
+  await setSetting('endOfDayReminderTime', '21:00');
   await setSetting('appInitialized', true);
 }

@@ -1,7 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { MoreHorizontal, Star } from 'lucide-react';
+import { Bell, BellOff, MoreHorizontal, Star } from 'lucide-react';
 import type { TodoEntry } from '@/lib/types';
 import { formatTime12 } from '@/lib/utils';
 import { cn } from '@/lib/utils';
@@ -11,6 +12,7 @@ interface TodoItemProps {
   onToggle: (id: string) => void;
   onStar: (id: string) => void;
   onDelete: (id: string) => void;
+  onSetReminder?: (id: string, reminderTime: string | undefined) => void;
 }
 
 export default function TodoItem({
@@ -18,7 +20,16 @@ export default function TodoItem({
   onToggle,
   onStar,
   onDelete,
+  onSetReminder,
 }: TodoItemProps) {
+  const [editingReminder, setEditingReminder] = useState(false);
+  const [time, setTime] = useState(todo.reminderTime ?? '');
+
+  const saveReminder = () => {
+    onSetReminder?.(todo.id, time || undefined);
+    setEditingReminder(false);
+  };
+
   return (
     <div className="card flex items-start gap-3">
       <button
@@ -68,14 +79,60 @@ export default function TodoItem({
             {todo.text}
           </motion.span>
         </motion.p>
-        {todo.reminderTime && (
-          <p className="text-caption mt-0.5 text-[var(--text-tertiary)]">
-            {formatTime12(todo.reminderTime)}
-          </p>
+        {editingReminder ? (
+          <div className="mt-2 flex items-center gap-2">
+            <input
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              className="text-caption rounded-lg border border-[var(--border)] bg-bg-base px-2 py-1"
+            />
+            <button
+              type="button"
+              onClick={saveReminder}
+              className="text-caption font-semibold text-accent"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditingReminder(false)}
+              className="text-caption text-[var(--text-tertiary)]"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          todo.reminderTime && (
+            <p className="text-caption mt-0.5 text-[var(--text-tertiary)]">
+              Reminder · {formatTime12(todo.reminderTime)}
+            </p>
+          )
         )}
       </div>
 
       <div className="flex shrink-0 items-center gap-1">
+        {onSetReminder && !todo.completed && (
+          <button
+            type="button"
+            onClick={() => {
+              if (todo.reminderTime && !editingReminder) {
+                onSetReminder(todo.id, undefined);
+                return;
+              }
+              setTime(todo.reminderTime ?? '');
+              setEditingReminder(true);
+            }}
+            className="p-1"
+            aria-label={todo.reminderTime ? 'Remove reminder' : 'Set reminder'}
+          >
+            {todo.reminderTime ? (
+              <Bell size={16} className="text-accent" />
+            ) : (
+              <BellOff size={16} className="text-[var(--text-tertiary)]" />
+            )}
+          </button>
+        )}
         <button
           type="button"
           onClick={() => onStar(todo.id)}

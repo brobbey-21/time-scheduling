@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useRef } from 'react';
 import {
   getAllClasses,
+  getAllTodos,
   getSetting,
-  getTodosByDate,
 } from '@/lib/db';
 import {
   clearScheduledNotifications,
+  loadReminderOptions,
   refreshNotificationSchedule,
 } from '@/lib/notifications';
 import { buildPushReminders } from '@/lib/push-schedule';
@@ -16,7 +17,8 @@ import {
   subscribeToPush,
   syncPushSchedule,
 } from '@/lib/push-client';
-import { toDateString } from '@/lib/utils';
+
+const RESYNC_INTERVAL_MS = 15 * 60 * 1000;
 
 export default function NotificationScheduler() {
   const running = useRef(false);
@@ -32,13 +34,13 @@ export default function NotificationScheduler() {
         return;
       }
 
-      const dateStr = toDateString();
-      const [classes, todos] = await Promise.all([
+      const [classes, todos, options] = await Promise.all([
         getAllClasses(),
-        getTodosByDate(dateStr),
+        getAllTodos(),
+        loadReminderOptions(),
       ]);
 
-      await refreshNotificationSchedule(classes, todos);
+      await refreshNotificationSchedule(classes, todos, options);
 
       if (
         isPushConfigured() &&
@@ -46,7 +48,7 @@ export default function NotificationScheduler() {
         Notification.permission === 'granted'
       ) {
         await subscribeToPush();
-        const reminders = buildPushReminders(classes, todos);
+        const reminders = buildPushReminders(classes, todos, options);
         await syncPushSchedule(reminders);
       }
     } finally {
@@ -56,6 +58,7 @@ export default function NotificationScheduler() {
 
   useEffect(() => {
     const timer = setTimeout(sync, 800);
+    const interval = setInterval(sync, RESYNC_INTERVAL_MS);
 
     const onVisible = () => {
       if (document.visibilityState === 'visible') sync();
@@ -69,6 +72,7 @@ export default function NotificationScheduler() {
 
     return () => {
       clearTimeout(timer);
+      clearInterval(interval);
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', onFocus);
       window.removeEventListener('notifications-changed', sync);

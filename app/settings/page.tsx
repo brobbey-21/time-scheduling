@@ -32,9 +32,7 @@ import type { StudyPreferences } from '@/lib/types';
 import PageHeader from '@/components/PageHeader';
 import {
   clearAllTodos,
-  getAllClasses,
   getSetting,
-  getTodosByDate,
   setSetting,
 } from '@/lib/db';
 import {
@@ -46,13 +44,11 @@ import {
 import {
   getNotificationPermission,
   getNotificationStatus,
-  getUpcomingClassCount,
   notifyScheduleRefresh,
   requestNotificationPermission,
   sendTestNotification,
 } from '@/lib/notifications';
 import { THEME_OPTIONS, loadTheme, saveTheme, type AppTheme } from '@/lib/theme';
-import { toDateString } from '@/lib/utils';
 
 interface SessionUser {
   id: string;
@@ -68,6 +64,9 @@ export default function SettingsPage() {
   const [loggingOut, setLoggingOut] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [defaultReminder, setDefaultReminder] = useState(10);
+  const [defaultTaskReminder, setDefaultTaskReminder] = useState('18:00');
+  const [endOfDayEnabled, setEndOfDayEnabled] = useState(true);
+  const [endOfDayTime, setEndOfDayTime] = useState('21:00');
   const [permission, setPermission] = useState<string>('default');
   const [scheduledCount, setScheduledCount] = useState(0);
   const [upcomingCount, setUpcomingCount] = useState(0);
@@ -89,11 +88,7 @@ export default function SettingsPage() {
     setScheduledCount(status.scheduledCount);
     setSwReady(status.serviceWorkerReady);
 
-    const [classes, todos] = await Promise.all([
-      getAllClasses(),
-      getTodosByDate(toDateString()),
-    ]);
-    setUpcomingCount(getUpcomingClassCount(classes) + todos.filter((t) => !t.completed && t.reminderTime).length);
+    setUpcomingCount(status.scheduledCount);
   }, []);
 
   useEffect(() => {
@@ -102,6 +97,9 @@ export default function SettingsPage() {
       .then((data) => setUser(data?.user ?? null))
       .catch(() => setUser(null));
     getSetting('defaultReminderMins', 10).then(setDefaultReminder);
+    getSetting('defaultTaskReminderTime', '18:00').then(setDefaultTaskReminder);
+    getSetting('endOfDayReminderEnabled', true).then(setEndOfDayEnabled);
+    getSetting('endOfDayReminderTime', '21:00').then(setEndOfDayTime);
     loadTheme().then(setAppTheme);
     fetchStudyProfile().then((p) => setStudyPrefs(p.preferences));
     refreshStatus();
@@ -328,13 +326,13 @@ export default function SettingsPage() {
               </span>
             </div>
             <div className="flex items-center justify-between text-caption">
-              <span className="text-[var(--text-secondary)]">Scheduled today</span>
+              <span className="text-[var(--text-secondary)]">Scheduled (7 days)</span>
               <span className="font-medium text-[var(--text-primary)]">
                 {scheduledCount} active
               </span>
             </div>
             <div className="flex items-center justify-between text-caption">
-              <span className="text-[var(--text-secondary)]">Upcoming reminders</span>
+              <span className="text-[var(--text-secondary)]">Queued reminders</span>
               <span className="font-medium text-[var(--text-primary)]">
                 {upcomingCount}
               </span>
@@ -393,23 +391,83 @@ export default function SettingsPage() {
           )}
 
           <div className="flex items-center justify-between border-t border-[var(--border)] pt-4">
-            <span className="text-body">Default Reminder</span>
+            <span className="text-body">Class reminder</span>
             <select
               value={defaultReminder}
               onChange={async (e) => {
                 const val = parseInt(e.target.value, 10);
                 setDefaultReminder(val);
                 await setSetting('defaultReminderMins', val);
+                notifyScheduleRefresh();
               }}
               className="text-caption bg-transparent text-[var(--text-secondary)] outline-none"
             >
               {[5, 10, 15, 30].map((m) => (
                 <option key={m} value={m}>
-                  {m} minutes before
+                  {m} min before class
                 </option>
               ))}
             </select>
           </div>
+
+          <div className="flex items-center justify-between border-t border-[var(--border)] pt-4">
+            <span className="text-body">Default task reminder</span>
+            <input
+              type="time"
+              value={defaultTaskReminder}
+              onChange={async (e) => {
+                setDefaultTaskReminder(e.target.value);
+                await setSetting('defaultTaskReminderTime', e.target.value);
+                notifyScheduleRefresh();
+              }}
+              className="text-caption bg-transparent text-[var(--text-secondary)] outline-none"
+            />
+          </div>
+
+          <div className="flex items-center justify-between border-t border-[var(--border)] pt-4">
+            <div>
+              <p className="text-body">End-of-day summary</p>
+              <p className="text-caption text-[var(--text-secondary)]">
+                Nudge when tasks are still pending
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={endOfDayEnabled}
+              onClick={async () => {
+                const next = !endOfDayEnabled;
+                setEndOfDayEnabled(next);
+                await setSetting('endOfDayReminderEnabled', next);
+                notifyScheduleRefresh();
+              }}
+              className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+                endOfDayEnabled ? 'bg-accent' : 'bg-[var(--border)]'
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                  endOfDayEnabled ? 'left-[22px]' : 'left-0.5'
+                }`}
+              />
+            </button>
+          </div>
+
+          {endOfDayEnabled && (
+            <div className="flex items-center justify-between">
+              <span className="text-caption text-[var(--text-secondary)]">Summary time</span>
+              <input
+                type="time"
+                value={endOfDayTime}
+                onChange={async (e) => {
+                  setEndOfDayTime(e.target.value);
+                  await setSetting('endOfDayReminderTime', e.target.value);
+                  notifyScheduleRefresh();
+                }}
+                className="text-caption bg-transparent text-[var(--text-secondary)] outline-none"
+              />
+            </div>
+          )}
         </div>
       </section>
 
@@ -625,7 +683,7 @@ export default function SettingsPage() {
           <Info size={14} className="mt-0.5 shrink-0 text-accent" />
           <p className="text-caption text-[var(--text-secondary)]">
             On iPhone, tap Share → Add to Home Screen, then open the app and allow
-            notifications in Settings. Reminders resync each time you open the app.
+            notifications. Class, task, and end-of-day reminders sync for the next 7 days.
           </p>
         </div>
       </section>

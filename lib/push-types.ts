@@ -6,6 +6,7 @@ export interface ScheduledPushReminder {
   url: string;
   tag: string;
   sent?: boolean;
+  requireInteraction?: boolean;
 }
 
 export interface PushStore {

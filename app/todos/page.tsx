@@ -9,6 +9,7 @@ import TodoItem from '@/components/TodoItem';
 import {
   addTodo,
   deleteTodo,
+  getSetting,
   getTodosByDate,
   updateTodo,
 } from '@/lib/db';
@@ -33,6 +34,8 @@ function TodosContent() {
   const [newText, setNewText] = useState('');
   const [showInput, setShowInput] = useState(false);
   const [reminderTime, setReminderTime] = useState('');
+  const [remindEnabled, setRemindEnabled] = useState(true);
+  const [defaultReminder, setDefaultReminder] = useState('18:00');
 
   useEffect(() => {
     const dateParam = searchParams.get('date');
@@ -52,6 +55,7 @@ function TodosContent() {
 
   useEffect(() => {
     load();
+    getSetting('defaultTaskReminderTime', '18:00').then(setDefaultReminder);
   }, [dateStr]);
 
   useEffect(() => {
@@ -95,10 +99,11 @@ function TodosContent() {
       text: newText.trim(),
       completed: false,
       starred: false,
-      reminderTime: reminderTime || undefined,
+      reminderTime: remindEnabled ? (reminderTime || defaultReminder) : undefined,
     });
     setNewText('');
     setReminderTime('');
+    setRemindEnabled(true);
     setShowInput(false);
     load();
     notifyScheduleRefresh();
@@ -174,6 +179,7 @@ function TodosContent() {
                 if (t) {
                   await updateTodo(id, { completed: !t.completed });
                   load();
+                  notifyScheduleRefresh();
                 }
               }}
               onStar={async (id) => {
@@ -186,6 +192,12 @@ function TodosContent() {
               onDelete={async (id) => {
                 await deleteTodo(id);
                 load();
+                notifyScheduleRefresh();
+              }}
+              onSetReminder={async (id, time) => {
+                await updateTodo(id, { reminderTime: time });
+                load();
+                notifyScheduleRefresh();
               }}
             />
           ))}
@@ -203,12 +215,34 @@ function TodosContent() {
               className="w-full bg-transparent text-body outline-none"
               onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
             />
-            <input
-              type="time"
-              value={reminderTime}
-              onChange={(e) => setReminderTime(e.target.value)}
-              className="text-caption text-[var(--text-secondary)]"
-            />
+            <label className="flex items-center justify-between">
+              <span className="text-caption text-[var(--text-secondary)]">
+                Remind me
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={remindEnabled}
+                onClick={() => setRemindEnabled((v) => !v)}
+                className={`relative h-6 w-10 rounded-full transition-colors ${
+                  remindEnabled ? 'bg-accent' : 'bg-[var(--border)]'
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                    remindEnabled ? 'left-[18px]' : 'left-0.5'
+                  }`}
+                />
+              </button>
+            </label>
+            {remindEnabled && (
+              <input
+                type="time"
+                value={reminderTime || defaultReminder}
+                onChange={(e) => setReminderTime(e.target.value)}
+                className="text-caption w-full rounded-lg border border-[var(--border)] bg-bg-base px-3 py-2 text-[var(--text-secondary)]"
+              />
+            )}
             <div className="flex gap-2">
               <button
                 type="button"

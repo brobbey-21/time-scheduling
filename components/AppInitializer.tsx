@@ -22,9 +22,9 @@ export default function AppInitializer({ children }: { children: React.ReactNode
 
     void init();
 
-    const sync = () => {
-      void syncAllClasses();
-      void pullTodos();
+    const sync = async () => {
+      await Promise.all([syncAllClasses(), pullTodos()]);
+      notifyScheduleRefresh();
     };
     window.addEventListener('online', sync);
     window.addEventListener('focus', sync);

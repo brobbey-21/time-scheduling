@@ -48,6 +48,8 @@ self.addEventListener('push', (event) => {
       icon: '/icons/icon-192.png',
       badge: '/icons/badge-72.png',
       tag: payload.tag || 'push',
+      requireInteraction: Boolean(payload.requireInteraction),
+      vibrate: payload.requireInteraction ? [200, 100, 200, 100, 200] : [120, 60, 120],
       data: { url: payload.url || '/' },
     })
   );

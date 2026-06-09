@@ -34,6 +34,7 @@ export async function subscribeToPush(): Promise<boolean> {
   const res = await fetch('/api/push/subscribe', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     body: JSON.stringify(subscription),
   });
 
@@ -49,6 +50,7 @@ export async function syncPushSchedule(
     const res = await fetch('/api/push/schedule', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ reminders }),
     });
     return res.ok;
@@ -71,7 +73,18 @@ export async function unsubscribeFromPush(): Promise<void> {
   const registration = await navigator.serviceWorker.ready;
   const subscription = await registration.pushManager.getSubscription();
   if (subscription) {
+    const endpoint = subscription.endpoint;
     await subscription.unsubscribe();
+    await fetch('/api/push/subscribe', {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ endpoint }),
+    });
+    return;
   }
-  await fetch('/api/push/subscribe', { method: 'DELETE' });
+  await fetch('/api/push/subscribe', {
+    method: 'DELETE',
+    credentials: 'include',
+  });
 }
