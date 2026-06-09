@@ -3,12 +3,14 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Calendar, Plus } from 'lucide-react';
+import { Calendar, Plus, RefreshCw } from 'lucide-react';
 import ClassCard from '@/components/ClassCard';
 import DaySelector from '@/components/DaySelector';
 import EmptyState from '@/components/EmptyState';
 import PageHeader from '@/components/PageHeader';
+import { applyDayPlan } from '@/lib/planner-apply';
 import { getClassesByDay } from '@/lib/db';
+import { fetchStudyProfile } from '@/lib/study-profile-sync';
 import type { ClassEntry, DayOfWeek } from '@/lib/types';
 import { DAYS } from '@/lib/types';
 import {
@@ -27,11 +29,19 @@ function TimetableContent() {
   const [selectedDay, setSelectedDay] = useState<DayOfWeek | null>(null);
   const [classes, setClasses] = useState<ClassEntry[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+  const [hasPlanner, setHasPlanner] = useState(false);
 
   useEffect(() => {
     const fromQuery = parseDayParam(searchParams.get('day'));
     setSelectedDay(fromQuery ?? getTodayDayName());
   }, [searchParams]);
+
+  useEffect(() => {
+    fetchStudyProfile().then((profile) => {
+      setHasPlanner(Boolean(profile.preferences.setupCompletedAt));
+    });
+  }, []);
 
   useEffect(() => {
     if (!selectedDay) return;
@@ -46,6 +56,28 @@ function TimetableContent() {
     window.addEventListener('classes-changed', loadDay);
     return () => window.removeEventListener('classes-changed', loadDay);
   }, [selectedDay]);
+
+  const handleRegenerateDay = async () => {
+    if (!selectedDay) return;
+    const profile = await fetchStudyProfile();
+    if (!profile.preferences.setupCompletedAt) {
+      alert('Set up Study Planner in Settings first.');
+      return;
+    }
+    if (
+      !confirm(
+        `Regenerate planned study blocks for ${selectedDay}? Manual routines are kept.`
+      )
+    ) {
+      return;
+    }
+    setRegenerating(true);
+    try {
+      await applyDayPlan(selectedDay, profile.preferences);
+    } finally {
+      setRegenerating(false);
+    }
+  };
 
   const isWeekend = selectedDay ? isWeekendDay(selectedDay) : false;
   const isToday = selectedDay === getDayNameFromDate(new Date());
@@ -85,6 +117,18 @@ function TimetableContent() {
       <div className="mb-5">
         <DaySelector selected={selectedDay} onChange={setSelectedDay} />
       </div>
+
+      {hasPlanner && (
+        <button
+          type="button"
+          onClick={handleRegenerateDay}
+          disabled={regenerating}
+          className="text-caption mb-4 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-accent/30 bg-[var(--accent-light)] py-2.5 font-semibold text-accent disabled:opacity-60"
+        >
+          <RefreshCw size={14} className={regenerating ? 'animate-spin' : ''} />
+          {regenerating ? 'Regenerating…' : `Regenerate ${selectedDay} study plan`}
+        </button>
+      )}
 
       {!loaded ? (
         <div className="animate-pulse space-y-3">

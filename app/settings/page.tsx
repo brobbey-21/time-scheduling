@@ -12,12 +12,23 @@ import {
   Monitor,
   Moon,
   RefreshCw,
+  Sparkles,
   Shield,
   Sun,
   Trash2,
   User,
 } from 'lucide-react';
+import { applyWeekPlan } from '@/lib/planner-apply';
 import { syncAllClasses } from '@/lib/class-sync';
+import { isSleepAfterWake } from '@/lib/study-profile';
+import {
+  dispatchOpenStudySetup,
+} from '@/lib/study-setup-events';
+import {
+  fetchStudyProfile,
+  saveStudyPreferences,
+} from '@/lib/study-profile-sync';
+import type { StudyPreferences } from '@/lib/types';
 import PageHeader from '@/components/PageHeader';
 import {
   clearAllTodos,
@@ -64,6 +75,9 @@ export default function SettingsPage() {
   const [testing, setTesting] = useState(false);
   const [appTheme, setAppTheme] = useState<AppTheme>('light');
   const [syncing, setSyncing] = useState(false);
+  const [studyPrefs, setStudyPrefs] = useState<StudyPreferences | null>(null);
+  const [regeneratingPlan, setRegeneratingPlan] = useState(false);
+  const [savingStudyPrefs, setSavingStudyPrefs] = useState(false);
   const pushConfigured = isPushConfigured();
 
   const refreshStatus = useCallback(async () => {
@@ -89,6 +103,7 @@ export default function SettingsPage() {
       .catch(() => setUser(null));
     getSetting('defaultReminderMins', 10).then(setDefaultReminder);
     loadTheme().then(setAppTheme);
+    fetchStudyProfile().then((p) => setStudyPrefs(p.preferences));
     refreshStatus();
 
     const onChange = () => refreshStatus();
@@ -152,6 +167,30 @@ export default function SettingsPage() {
     if (confirm('Clear all todos? This cannot be undone.')) {
       await clearAllTodos();
       notifyScheduleRefresh();
+    }
+  };
+
+  const handleSaveStudyPrefs = async () => {
+    if (!studyPrefs || !isSleepAfterWake(studyPrefs.wakeTime, studyPrefs.sleepTime)) return;
+    setSavingStudyPrefs(true);
+    const profile = await saveStudyPreferences(studyPrefs);
+    if (profile) setStudyPrefs(profile.preferences);
+    setSavingStudyPrefs(false);
+  };
+
+  const handleRegenerateWeek = async () => {
+    if (!studyPrefs?.setupCompletedAt) {
+      dispatchOpenStudySetup();
+      return;
+    }
+    if (!confirm('Regenerate the full week study plan? Manual routines are kept.')) return;
+    setRegeneratingPlan(true);
+    try {
+      await applyWeekPlan(studyPrefs);
+      const profile = await fetchStudyProfile();
+      setStudyPrefs(profile.preferences);
+    } finally {
+      setRegeneratingPlan(false);
     }
   };
 
@@ -371,6 +410,132 @@ export default function SettingsPage() {
               ))}
             </select>
           </div>
+        </div>
+      </section>
+
+      <section className="mb-6">
+        <p className="text-micro mb-3 uppercase text-[var(--text-tertiary)]">
+          Study Planner
+        </p>
+        <div className="card space-y-4">
+          <p className="text-caption text-[var(--text-secondary)]">
+            Auto-build study and rest blocks around your official class schedule.
+          </p>
+
+          {studyPrefs ? (
+            <>
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-body">Daily study goal</span>
+                  <span className="text-caption font-medium text-accent">
+                    {studyPrefs.dailyBudgetMinutes / 60}h
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={60}
+                  max={600}
+                  step={30}
+                  value={studyPrefs.dailyBudgetMinutes}
+                  onChange={(e) =>
+                    setStudyPrefs((p) =>
+                      p
+                        ? { ...p, dailyBudgetMinutes: parseInt(e.target.value, 10) }
+                        : p
+                    )
+                  }
+                  className="mt-2 w-full accent-accent"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <label>
+                  <span className="text-caption text-[var(--text-secondary)]">Wake</span>
+                  <input
+                    type="time"
+                    value={studyPrefs.wakeTime}
+                    onChange={(e) =>
+                      setStudyPrefs((p) =>
+                        p ? { ...p, wakeTime: e.target.value } : p
+                      )
+                    }
+                    className="text-caption mt-1 w-full rounded-lg border border-[var(--border)] bg-bg-base px-2 py-2"
+                  />
+                </label>
+                <label>
+                  <span className="text-caption text-[var(--text-secondary)]">Sleep</span>
+                  <input
+                    type="time"
+                    value={studyPrefs.sleepTime}
+                    onChange={(e) =>
+                      setStudyPrefs((p) =>
+                        p ? { ...p, sleepTime: e.target.value } : p
+                      )
+                    }
+                    className="text-caption mt-1 w-full rounded-lg border border-[var(--border)] bg-bg-base px-2 py-2"
+                  />
+                </label>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-body">Include weekends</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={studyPrefs.planWeekends}
+                  onClick={() =>
+                    setStudyPrefs((p) =>
+                      p ? { ...p, planWeekends: !p.planWeekends } : p
+                    )
+                  }
+                  className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+                    studyPrefs.planWeekends ? 'bg-accent' : 'bg-[var(--border)]'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                      studyPrefs.planWeekends ? 'left-[22px]' : 'left-0.5'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSaveStudyPrefs}
+                disabled={
+                  savingStudyPrefs ||
+                  !isSleepAfterWake(studyPrefs.wakeTime, studyPrefs.sleepTime)
+                }
+                className="w-full rounded-xl border border-[var(--border)] py-2.5 text-caption font-semibold disabled:opacity-60"
+              >
+                {savingStudyPrefs ? 'Saving…' : 'Save preferences'}
+              </button>
+            </>
+          ) : (
+            <p className="text-caption text-[var(--text-tertiary)]">Loading…</p>
+          )}
+
+          <button
+            type="button"
+            onClick={() => dispatchOpenStudySetup()}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent-light)] py-3 text-body font-semibold text-accent"
+          >
+            <Sparkles size={18} />
+            {studyPrefs?.setupCompletedAt ? 'Re-run setup wizard' : 'Set up Study Planner'}
+          </button>
+
+          {studyPrefs?.setupCompletedAt && (
+            <button
+              type="button"
+              onClick={handleRegenerateWeek}
+              disabled={regeneratingPlan}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 text-body font-semibold text-white disabled:opacity-60"
+            >
+              <RefreshCw size={18} className={regeneratingPlan ? 'animate-spin' : ''} />
+              {regeneratingPlan ? 'Regenerating…' : 'Regenerate full week'}
+            </button>
+          )}
         </div>
       </section>
 

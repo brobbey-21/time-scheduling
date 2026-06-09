@@ -13,6 +13,7 @@ import {
   X,
 } from 'lucide-react';
 import { hasSeenTutorial, markTutorialSeen } from '@/lib/onboarding';
+import { dispatchOnboardingComplete } from '@/lib/study-setup-events';
 
 const STEPS = [
   {
@@ -68,6 +69,7 @@ export default function OnboardingTutorial() {
   const close = () => {
     if (userId) markTutorialSeen(userId);
     setOpen(false);
+    dispatchOnboardingComplete();
   };
 
   const next = () => {

@@ -12,6 +12,7 @@ import { DAYS } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 type Tab = 'schedule' | 'routines';
+type RoutineFilter = 'all' | 'planned' | 'manual';
 
 interface SessionUser {
   name: string;
@@ -24,6 +25,7 @@ export default function ManagePage() {
   const [editMode, setEditMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [user, setUser] = useState<SessionUser | null>(null);
+  const [routineFilter, setRoutineFilter] = useState<RoutineFilter>('all');
 
   const load = () => getAllClasses().then(setClasses);
 
@@ -54,7 +56,14 @@ export default function ManagePage() {
       return a.startTime.localeCompare(b.startTime);
     });
 
-  const filtered = tab === 'schedule' ? scheduleClasses : routineClasses;
+  const routineFiltered =
+    routineFilter === 'planned'
+      ? routineClasses.filter((c) => c.plannerGenerated)
+      : routineFilter === 'manual'
+        ? routineClasses.filter((c) => !c.plannerGenerated)
+        : routineClasses;
+
+  const filtered = tab === 'schedule' ? scheduleClasses : routineFiltered;
   const canEdit = tab === 'routines';
 
   const toggleSelect = (id: string) => {
@@ -151,9 +160,34 @@ export default function ManagePage() {
       )}
 
       {tab === 'routines' && (
-        <p className="text-caption mb-4 text-[var(--text-secondary)]">
-          Private to your account — study blocks, extra classes, or personal reminders.
-        </p>
+        <>
+          <p className="text-caption mb-3 text-[var(--text-secondary)]">
+            Private to your account — study blocks, extra classes, or personal reminders.
+          </p>
+          <div className="mb-4 flex gap-2">
+            {(
+              [
+                { id: 'all' as RoutineFilter, label: 'All' },
+                { id: 'planned' as RoutineFilter, label: 'Planned' },
+                { id: 'manual' as RoutineFilter, label: 'Manual' },
+              ] as const
+            ).map(({ id, label }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setRoutineFilter(id)}
+                className={cn(
+                  'rounded-full px-3 py-1.5 text-micro font-medium',
+                  routineFilter === id
+                    ? 'bg-[var(--accent-light)] text-accent'
+                    : 'text-[var(--text-tertiary)]'
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </>
       )}
 
       {editMode && selected.size > 0 && (

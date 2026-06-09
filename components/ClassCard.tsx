@@ -47,6 +47,11 @@ export default function ClassCard({ cls, showTime = false }: ClassCardProps) {
                   Official
                 </span>
               )}
+              {!cls.isDefault && cls.plannerGenerated && (
+                <span className="rounded-full bg-[var(--type-study-bg)] px-1.5 py-0.5 text-micro font-semibold text-[var(--type-study-text)]">
+                  Planned
+                </span>
+              )}
               {active && (
                 <span className="rounded-full bg-accent/15 px-1.5 py-0.5 text-micro font-semibold text-accent">
                   Now

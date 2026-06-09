@@ -1,6 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
-import type { ClassEntry, TodoEntry } from './types';
+import type { ClassEntry, StudyProfile, TodoEntry } from './types';
 import type { UserMeta } from './auth-types';
 import { assertPersistentStorage } from './storage-config';
 import { isUpstashConfigured, upstashCommand } from './upstash';
@@ -19,7 +19,14 @@ function metaKey(userId: string) {
   return `user:${userId}:meta`;
 }
 
-function filePath(userId: string, kind: 'todos' | 'classes' | 'meta') {
+function studyProfileKey(userId: string) {
+  return `user:${userId}:study-profile`;
+}
+
+function filePath(
+  userId: string,
+  kind: 'todos' | 'classes' | 'meta' | 'study-profile'
+) {
   return path.join(DATA_DIR, userId, `${kind}.json`);
 }
 
@@ -112,4 +119,24 @@ export async function saveUserMeta(
   meta: UserMeta
 ): Promise<boolean> {
   return setValue(metaKey(userId), filePath(userId, 'meta'), meta);
+}
+
+export async function getUserStudyProfile(
+  userId: string
+): Promise<StudyProfile | null> {
+  return getValue<StudyProfile>(
+    studyProfileKey(userId),
+    filePath(userId, 'study-profile')
+  );
+}
+
+export async function saveUserStudyProfile(
+  userId: string,
+  profile: StudyProfile
+): Promise<boolean> {
+  return setValue(
+    studyProfileKey(userId),
+    filePath(userId, 'study-profile'),
+    profile
+  );
 }

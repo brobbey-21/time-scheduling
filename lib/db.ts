@@ -108,6 +108,22 @@ export async function addClass(
   return full;
 }
 
+function logPlannerFeedback(
+  existing: ClassEntry,
+  type: 'deleted' | 'edited',
+  details?: string
+): void {
+  if (!existing.plannerGenerated || typeof window === 'undefined') return;
+  import('./study-profile-sync').then(({ queuePlannerFeedback }) => {
+    queuePlannerFeedback({
+      type,
+      day: existing.day,
+      blockId: existing.id,
+      details,
+    });
+  });
+}
+
 export async function updateClass(
   id: string,
   updates: Partial<ClassEntry>
@@ -117,6 +133,17 @@ export async function updateClass(
   if (!existing) return undefined;
   if (existing.isDefault) return undefined;
   const updated: ClassEntry = { ...existing, ...updates, updatedAt: Date.now() };
+  if (
+    existing.plannerGenerated &&
+    (updates.startTime !== undefined || updates.endTime !== undefined) &&
+    (updates.startTime !== existing.startTime || updates.endTime !== existing.endTime)
+  ) {
+    logPlannerFeedback(
+      existing,
+      'edited',
+      `${existing.startTime}-${existing.endTime}→${updated.startTime}-${updated.endTime}`
+    );
+  }
   await db.put('classes', updated);
   scheduleClassCloudPush();
   return updated;
@@ -126,6 +153,7 @@ export async function deleteClass(id: string): Promise<boolean> {
   const db = await getDB();
   const existing = await db.get('classes', id);
   if (!existing || existing.isDefault) return false;
+  logPlannerFeedback(existing, 'deleted');
   await db.delete('classes', id);
   scheduleClassCloudPush();
   return true;
@@ -139,6 +167,10 @@ export async function deleteClasses(ids: string[]): Promise<void> {
     if (existing && !existing.isDefault) deletable.push(id);
   }
   if (deletable.length === 0) return;
+  for (const id of deletable) {
+    const existing = await db.get('classes', id);
+    if (existing) logPlannerFeedback(existing, 'deleted');
+  }
   const tx = db.transaction('classes', 'readwrite');
   await Promise.all([...deletable.map((id) => tx.store.delete(id)), tx.done]);
   scheduleClassCloudPush();

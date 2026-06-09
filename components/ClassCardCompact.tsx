@@ -25,8 +25,10 @@ export default function ClassCardCompact({
 }: ClassCardCompactProps) {
   const linkHref = href ?? `/manage/${cls.id}`;
   const showOfficial = badge ?? (cls.isDefault ? 'Official' : undefined);
-  const showPersonal = !cls.isDefault ? 'My Routine' : undefined;
-  const label = showOfficial ?? showPersonal;
+  const showPlanned =
+    !cls.isDefault && cls.plannerGenerated ? 'Planned' : undefined;
+  const showPersonal = !cls.isDefault && !cls.plannerGenerated ? 'My Routine' : undefined;
+  const label = showOfficial ?? showPlanned ?? showPersonal;
 
   const content = (
     <div className="card flex items-center gap-3 transition-transform active:scale-[0.98]">

@@ -29,8 +29,43 @@ export interface ClassEntry {
   notes: string;
   meetingUrl?: string;
   isDefault: boolean;
+  plannerGenerated?: boolean;
+  plannerVersion?: number;
   createdAt: number;
   updatedAt: number;
+}
+
+export interface StudyPreferences {
+  dailyBudgetMinutes: number;
+  wakeTime: string;
+  sleepTime: string;
+  planWeekends: boolean;
+  breakMinutes: number;
+  minStudyBlockMinutes: number;
+  maxStudyBlockMinutes: number;
+  setupCompletedAt?: number;
+  lastGeneratedAt?: number;
+  plannerVersion: number;
+}
+
+export type PlannerFeedbackType =
+  | 'deleted'
+  | 'edited'
+  | 'regenerated_day'
+  | 'regenerated_week'
+  | 'setup_completed';
+
+export interface PlannerFeedbackEvent {
+  at: number;
+  type: PlannerFeedbackType;
+  day?: DayOfWeek;
+  blockId?: string;
+  details?: string;
+}
+
+export interface StudyProfile {
+  preferences: StudyPreferences;
+  feedback: PlannerFeedbackEvent[];
 }
 
 export interface TodoEntry {
