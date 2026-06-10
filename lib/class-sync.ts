@@ -1,4 +1,5 @@
 import { getAllClasses, replaceAllClasses } from './db';
+import { notifyScheduleRefresh } from './notifications';
 import { composeSchedule, getPersonalClasses } from './schedule-utils';
 import type { ClassEntry } from './types';
 
@@ -90,6 +91,7 @@ export async function syncAllClasses(): Promise<boolean> {
     if (sharedRes.ok || personalRes.ok) {
       await replaceAllClasses(composeSchedule(shared, personal));
       notifyClassesChanged();
+      notifyScheduleRefresh();
       return true;
     }
 

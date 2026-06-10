@@ -15,13 +15,16 @@ import { buildPushReminders } from '@/lib/push-schedule';
 import {
   isPushConfigured,
   subscribeToPush,
-  syncPushSchedule,
+  syncPushScheduleWithRetry,
+  waitForServiceWorker,
 } from '@/lib/push-client';
 
-const RESYNC_INTERVAL_MS = 15 * 60 * 1000;
+const BACKGROUND_RESYNC_MS = 5 * 60 * 1000;
+const VISIBLE_RESYNC_MS = 2 * 60 * 1000;
 
 export default function NotificationScheduler() {
   const running = useRef(false);
+  const visibleInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const sync = useCallback(async () => {
     if (running.current) return;
@@ -34,6 +37,16 @@ export default function NotificationScheduler() {
         return;
       }
 
+      if (
+        typeof Notification !== 'undefined' &&
+        Notification.permission !== 'granted'
+      ) {
+        clearScheduledNotifications();
+        return;
+      }
+
+      await waitForServiceWorker();
+
       const [classes, todos, options] = await Promise.all([
         getAllClasses(),
         getAllTodos(),
@@ -42,14 +55,16 @@ export default function NotificationScheduler() {
 
       await refreshNotificationSchedule(classes, todos, options);
 
-      if (
-        isPushConfigured() &&
-        typeof Notification !== 'undefined' &&
-        Notification.permission === 'granted'
-      ) {
-        await subscribeToPush();
-        const reminders = buildPushReminders(classes, todos, options);
-        await syncPushSchedule(reminders);
+      if (isPushConfigured() && typeof Notification !== 'undefined') {
+        const subscribed = await subscribeToPush();
+        if (subscribed) {
+          const reminders = buildPushReminders(classes, todos, options);
+          await syncPushScheduleWithRetry(reminders, 3);
+        }
+      }
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('push-schedule-synced'));
       }
     } finally {
       running.current = false;
@@ -57,25 +72,66 @@ export default function NotificationScheduler() {
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(sync, 800);
-    const interval = setInterval(sync, RESYNC_INTERVAL_MS);
+    const timer = setTimeout(() => void sync(), 500);
+    const backgroundInterval = setInterval(() => void sync(), BACKGROUND_RESYNC_MS);
 
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') sync();
+    const startVisibleInterval = () => {
+      if (visibleInterval.current) return;
+      visibleInterval.current = setInterval(() => void sync(), VISIBLE_RESYNC_MS);
     };
 
-    const onFocus = () => sync();
+    const stopVisibleInterval = () => {
+      if (!visibleInterval.current) return;
+      clearInterval(visibleInterval.current);
+      visibleInterval.current = null;
+    };
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        void sync();
+        startVisibleInterval();
+      } else {
+        stopVisibleInterval();
+      }
+    };
+
+    const onFocus = () => void sync();
+    const onOnline = () => void sync();
+
+    if (document.visibilityState === 'visible') {
+      startVisibleInterval();
+    }
 
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('focus', onFocus);
+    window.addEventListener('online', onOnline);
     window.addEventListener('notifications-changed', sync);
+    window.addEventListener('classes-changed', sync);
+    window.addEventListener('todos-changed', sync);
+
+    const onSwMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'PUSH_SUBSCRIPTION_EXPIRED') {
+        void sync();
+      }
+    };
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', onSwMessage);
+    }
 
     return () => {
       clearTimeout(timer);
-      clearInterval(interval);
+      clearInterval(backgroundInterval);
+      stopVisibleInterval();
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', onFocus);
+      window.removeEventListener('online', onOnline);
       window.removeEventListener('notifications-changed', sync);
+      window.removeEventListener('classes-changed', sync);
+      window.removeEventListener('todos-changed', sync);
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.removeEventListener('message', onSwMessage);
+      }
       clearScheduledNotifications();
     };
   }, [sync]);

@@ -61,11 +61,17 @@ export default function AdminSchedulePage() {
       <div className="mb-5 space-y-4">
         <div className="rounded-xl bg-[var(--accent-light)] p-4">
           <p className="text-caption text-[var(--text-secondary)]">
-            Changes here update the shared schedule for all MN 3C students. Personal study
-            routines are not affected.
+            Changes here update the shared schedule for all MN 3C students. When importing
+            .ics, choose <strong>Public</strong> for everyone or <strong>Private</strong> for
+            only your account. Personal study routines are not affected by public imports.
           </p>
         </div>
-        <IcsImportButton onImported={load} />
+        <IcsImportButton
+          onImported={load}
+          defaultVisibility="public"
+          allowPublic
+          showVisibilityChoice
+        />
       </div>
 
       {!loaded ? (

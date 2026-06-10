@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Plus, Settings } from 'lucide-react';
 import ClassCardCompact from '@/components/ClassCardCompact';
 import EmptyState from '@/components/EmptyState';
+import IcsImportButton from '@/components/IcsImportButton';
 import PageHeader from '@/components/PageHeader';
 import { deleteClasses, getAllClasses } from '@/lib/db';
 import type { ClassEntry } from '@/lib/types';
@@ -154,7 +155,18 @@ export default function ManagePage() {
               </Link>
             </>
           ) : (
-            ' Managed by your class admin.'
+            <>
+              {' '}
+              Managed by your class admin. Import your own copy under{' '}
+              <button
+                type="button"
+                onClick={() => setTab('routines')}
+                className="font-medium text-accent"
+              >
+                My Routines
+              </button>
+              .
+            </>
           )}
         </p>
       )}
@@ -163,7 +175,16 @@ export default function ManagePage() {
         <>
           <p className="text-caption mb-3 text-[var(--text-secondary)]">
             Private to your account — study blocks, extra classes, or personal reminders.
+            Import a .ics file to bulk-add or replace manual routines.
           </p>
+          <div className="mb-4">
+            <IcsImportButton
+              onImported={load}
+              defaultVisibility="private"
+              allowPublic={user?.role === 'admin'}
+              showVisibilityChoice={user?.role === 'admin'}
+            />
+          </div>
           <div className="mb-4 flex gap-2">
             {(
               [

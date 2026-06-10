@@ -1,4 +1,5 @@
 import { getAllTodos, replaceAllTodos } from './db';
+import { notifyScheduleRefresh } from './notifications';
 import type { TodoEntry } from './types';
 
 function todoTimestamp(todo: TodoEntry): number {
@@ -71,6 +72,7 @@ export async function pullTodos(): Promise<boolean> {
     await replaceAllTodos(merged);
     await pushTodos(merged);
     notifyTodosChanged();
+    notifyScheduleRefresh();
     return true;
   } catch {
     return false;

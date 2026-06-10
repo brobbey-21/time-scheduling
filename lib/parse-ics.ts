@@ -64,7 +64,10 @@ function detectClassType(venue: string, summary: string, url?: string): ClassTyp
   return 'CLASS_PHYSICAL';
 }
 
-function parseVeventBlock(block: string): Omit<ClassEntry, 'createdAt' | 'updatedAt'>[] {
+function parseVeventBlock(
+  block: string,
+  isDefault: boolean
+): Omit<ClassEntry, 'createdAt' | 'updatedAt'>[] {
   const lines = block.split('\n').map((l) => l.trim()).filter(Boolean);
   const fields: Record<string, string> = {};
 
@@ -125,18 +128,26 @@ function parseVeventBlock(block: string): Omit<ClassEntry, 'createdAt' | 'update
     notificationMinsBefore: 10,
     notes,
     meetingUrl,
-    isDefault: true,
+    isDefault,
   }));
 }
 
-export function parseICSFile(content: string): Omit<ClassEntry, 'createdAt' | 'updatedAt'>[] {
+export interface ParseIcsOptions {
+  isDefault?: boolean;
+}
+
+export function parseICSFile(
+  content: string,
+  options: ParseIcsOptions = {}
+): Omit<ClassEntry, 'createdAt' | 'updatedAt'>[] {
+  const isDefault = options.isDefault ?? true;
   const flat = unfoldIcs(content);
   const blocks = flat.split('BEGIN:VEVENT').slice(1);
   const classes: Omit<ClassEntry, 'createdAt' | 'updatedAt'>[] = [];
 
   for (const chunk of blocks) {
     const block = chunk.split('END:VEVENT')[0] ?? chunk;
-    classes.push(...parseVeventBlock(block));
+    classes.push(...parseVeventBlock(block, isDefault));
   }
 
   return classes;

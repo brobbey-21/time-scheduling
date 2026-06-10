@@ -40,6 +40,7 @@ import {
   setSetting,
 } from '@/lib/db';
 import {
+  fetchPushStatus,
   isPushConfigured,
   sendTestPush,
   subscribeToPush,
@@ -76,6 +77,10 @@ export default function SettingsPage() {
   const [upcomingCount, setUpcomingCount] = useState(0);
   const [swReady, setSwReady] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [refreshingPush, setRefreshingPush] = useState(false);
+  const [pushServerPending, setPushServerPending] = useState<number | null>(null);
+  const [pushServerSubscriptions, setPushServerSubscriptions] = useState<number | null>(null);
+  const [pushLastSync, setPushLastSync] = useState<number | null>(null);
   const [appTheme, setAppTheme] = useState<AppTheme>('light');
   const [syncing, setSyncing] = useState(false);
   const [studyPrefs, setStudyPrefs] = useState<StudyPreferences | null>(null);
@@ -93,7 +98,20 @@ export default function SettingsPage() {
     setSwReady(status.serviceWorkerReady);
 
     setUpcomingCount(status.scheduledCount);
-  }, []);
+
+    if (pushConfigured && enabled) {
+      const pushStatus = await fetchPushStatus();
+      if (pushStatus) {
+        setPushServerPending(pushStatus.pendingReminders);
+        setPushServerSubscriptions(pushStatus.subscriptions);
+        setPushLastSync(pushStatus.lastScheduleSync);
+      }
+    } else {
+      setPushServerPending(null);
+      setPushServerSubscriptions(null);
+      setPushLastSync(null);
+    }
+  }, [pushConfigured]);
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -113,10 +131,12 @@ export default function SettingsPage() {
       setAppTheme((e as CustomEvent<AppTheme>).detail);
     };
     window.addEventListener('notifications-changed', onChange);
+    window.addEventListener('push-schedule-synced', onChange);
     window.addEventListener('focus', onChange);
     window.addEventListener('theme-changed', onThemeChange);
     return () => {
       window.removeEventListener('notifications-changed', onChange);
+      window.removeEventListener('push-schedule-synced', onChange);
       window.removeEventListener('focus', onChange);
       window.removeEventListener('theme-changed', onThemeChange);
     };
@@ -202,6 +222,14 @@ export default function SettingsPage() {
     notifyScheduleRefresh();
     await refreshStatus();
     setSyncing(false);
+  };
+
+  const handleRefreshPushSchedule = async () => {
+    setRefreshingPush(true);
+    notifyScheduleRefresh();
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    await refreshStatus();
+    setRefreshingPush(false);
   };
 
   const handleLogout = async () => {
@@ -330,17 +358,43 @@ export default function SettingsPage() {
               </span>
             </div>
             <div className="flex items-center justify-between text-caption">
-              <span className="text-[var(--text-secondary)]">Scheduled (7 days)</span>
+              <span className="text-[var(--text-secondary)]">Local timers (14 days)</span>
               <span className="font-medium text-[var(--text-primary)]">
                 {scheduledCount} active
               </span>
             </div>
-            <div className="flex items-center justify-between text-caption">
-              <span className="text-[var(--text-secondary)]">Queued reminders</span>
-              <span className="font-medium text-[var(--text-primary)]">
-                {upcomingCount}
-              </span>
-            </div>
+            {pushConfigured && pushServerPending !== null && (
+              <div className="flex items-center justify-between text-caption">
+                <span className="text-[var(--text-secondary)]">Server push queue</span>
+                <span className="font-medium text-[var(--text-primary)]">
+                  {pushServerPending} pending
+                </span>
+              </div>
+            )}
+            {pushConfigured && pushServerSubscriptions !== null && (
+              <div className="flex items-center justify-between text-caption">
+                <span className="text-[var(--text-secondary)]">Push devices</span>
+                <span
+                  className={
+                    pushServerSubscriptions > 0
+                      ? 'font-medium text-[var(--success-text)]'
+                      : 'font-medium text-[var(--danger-text)]'
+                  }
+                >
+                  {pushServerSubscriptions > 0
+                    ? `${pushServerSubscriptions} registered`
+                    : 'None — reopen app once'}
+                </span>
+              </div>
+            )}
+            {pushLastSync !== null && pushLastSync > 0 && (
+              <div className="flex items-center justify-between text-caption">
+                <span className="text-[var(--text-secondary)]">Last server sync</span>
+                <span className="font-medium text-[var(--text-primary)]">
+                  {new Date(pushLastSync).toLocaleString()}
+                </span>
+              </div>
+            )}
             {pushConfigured && (
               <div className="flex items-center justify-between text-caption">
                 <span className="text-[var(--text-secondary)]">Web Push (VAPID)</span>
@@ -383,15 +437,39 @@ export default function SettingsPage() {
           )}
 
           {permission === 'granted' && (
-            <button
-              type="button"
-              onClick={handleTestNotification}
-              disabled={testing}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border)] py-3 text-body font-semibold shadow-sm"
-            >
-              <CheckCircle2 size={18} className="text-accent" />
-              {testing ? 'Sending…' : 'Send Test Notification'}
-            </button>
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={handleTestNotification}
+                disabled={testing}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border)] py-3 text-body font-semibold shadow-sm"
+              >
+                <CheckCircle2 size={18} className="text-accent" />
+                {testing ? 'Sending…' : 'Send Test Notification'}
+              </button>
+              <button
+                type="button"
+                onClick={handleRefreshPushSchedule}
+                disabled={refreshingPush}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border)] py-3 text-body font-semibold shadow-sm"
+              >
+                <RefreshCw
+                  size={18}
+                  className={`text-accent ${refreshingPush ? 'animate-spin' : ''}`}
+                />
+                {refreshingPush ? 'Refreshing…' : 'Refresh notification schedule'}
+              </button>
+            </div>
+          )}
+
+          {permission === 'granted' && pushConfigured && (
+            <div className="flex gap-2 rounded-xl bg-[var(--bg-base)] p-3">
+              <Info size={16} className="mt-0.5 shrink-0 text-[var(--text-tertiary)]" />
+              <p className="text-caption text-[var(--text-secondary)]">
+                For reliable alerts when the app is closed, add Class Time to your home
+                screen (especially on iPhone) and tap Refresh after changing your schedule.
+              </p>
+            </div>
           )}
 
           <div className="flex items-center justify-between border-t border-[var(--border)] pt-4">

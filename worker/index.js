@@ -32,6 +32,26 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
+self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil(
+    (async () => {
+      const clients = await self.clients.matchAll({
+        type: 'window',
+        includeUncontrolled: true,
+      });
+      for (const client of clients) {
+        client.postMessage({ type: 'PUSH_SUBSCRIPTION_EXPIRED' });
+      }
+    })()
+  );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener('push', (event) => {
   if (!event.data) return;
 

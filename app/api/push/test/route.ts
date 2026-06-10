@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth-session';
-import { getUserPushStore } from '@/lib/push-storage';
+import { isDeadSubscriptionError } from '@/lib/push-reliability';
+import { getUserPushStore, saveUserPushStore } from '@/lib/push-storage';
 import { isVapidConfigured, sendWebPush } from '@/lib/vapid';
 
 export async function POST() {
@@ -26,10 +27,29 @@ export async function POST() {
     requireInteraction: true,
   };
 
-  const results = await Promise.allSettled(
-    store.subscriptions.map((sub) => sendWebPush(sub, payload))
-  );
+  const liveSubscriptions: PushSubscriptionJSON[] = [];
+  let sent = 0;
 
-  const sent = results.filter((r) => r.status === 'fulfilled').length;
-  return NextResponse.json({ ok: sent > 0, sent, total: store.subscriptions.length });
+  for (const sub of store.subscriptions) {
+    try {
+      await sendWebPush(sub, payload);
+      liveSubscriptions.push(sub);
+      sent += 1;
+    } catch (error) {
+      if (!isDeadSubscriptionError(error)) {
+        liveSubscriptions.push(sub);
+      }
+    }
+  }
+
+  if (liveSubscriptions.length !== store.subscriptions.length) {
+    store.subscriptions = liveSubscriptions;
+    await saveUserPushStore(user.id, store);
+  }
+
+  return NextResponse.json({
+    ok: sent > 0,
+    sent,
+    total: liveSubscriptions.length,
+  });
 }

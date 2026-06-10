@@ -1,42 +1,66 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { FileUp, Loader2 } from 'lucide-react';
-import { saveSharedSchedule } from '@/lib/admin-schedule';
+import { FileUp, Globe, Loader2, Lock } from 'lucide-react';
+import { importIcsSchedule, type IcsVisibility } from '@/lib/ics-import';
 import { parseICSFile } from '@/lib/parse-ics';
+import { cn } from '@/lib/utils';
 
 interface IcsImportButtonProps {
   onImported: () => void;
+  defaultVisibility?: IcsVisibility;
+  allowPublic?: boolean;
+  showVisibilityChoice?: boolean;
 }
 
-export default function IcsImportButton({ onImported }: IcsImportButtonProps) {
+export default function IcsImportButton({
+  onImported,
+  defaultVisibility = 'private',
+  allowPublic = false,
+  showVisibilityChoice = false,
+}: IcsImportButtonProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [visibility, setVisibility] = useState<IcsVisibility>(defaultVisibility);
+
+  const canChoosePublic = allowPublic && showVisibilityChoice;
+  const effectiveVisibility = canChoosePublic ? visibility : 'private';
+
+  const visibilityLabel =
+    effectiveVisibility === 'public'
+      ? 'shared MN 3C timetable (everyone)'
+      : 'your private routines (only you)';
 
   const handleFile = async (file: File) => {
     setError('');
     setLoading(true);
     try {
       const text = await file.text();
-      const parsed = parseICSFile(text);
+      const parsed = parseICSFile(text, {
+        isDefault: effectiveVisibility === 'public',
+      });
       if (parsed.length === 0) {
         setError('No weekly class events found in that file.');
         return;
       }
 
+      const replaceNote =
+        effectiveVisibility === 'public'
+          ? 'This replaces the current shared MN 3C timetable for everyone.'
+          : 'This replaces your manual routines. Planned study blocks are kept.';
+
       const confirmed = confirm(
-        `Import ${parsed.length} class${parsed.length === 1 ? '' : 'es'} from "${file.name}"?\n\nThis replaces the current shared MN 3C timetable for everyone.`
+        `Import ${parsed.length} class${parsed.length === 1 ? '' : 'es'} from "${file.name}" as ${visibilityLabel}?\n\n${replaceNote}`
       );
       if (!confirmed) return;
 
-      const now = Date.now();
-      await saveSharedSchedule(
-        parsed.map((c) => ({ ...c, createdAt: now, updatedAt: now }))
-      );
+      await importIcsSchedule(parsed, effectiveVisibility);
       onImported();
-    } catch {
-      setError('Could not read that calendar file. Try a standard .ics export.');
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Could not read that calendar file.';
+      setError(message.includes('Admin') ? message : 'Could not read that calendar file. Try a standard .ics export.');
     } finally {
       setLoading(false);
       if (inputRef.current) inputRef.current.value = '';
@@ -45,6 +69,39 @@ export default function IcsImportButton({ onImported }: IcsImportButtonProps) {
 
   return (
     <div>
+      {canChoosePublic && (
+        <div className="mb-3 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setVisibility('public')}
+            className={cn(
+              'flex flex-col items-center gap-1 rounded-xl border px-3 py-3 text-caption font-medium transition-colors',
+              visibility === 'public'
+                ? 'border-accent bg-[var(--accent-light)] text-accent'
+                : 'border-[var(--border)] text-[var(--text-secondary)]'
+            )}
+          >
+            <Globe size={18} />
+            Public
+            <span className="text-micro font-normal opacity-80">Everyone sees it</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setVisibility('private')}
+            className={cn(
+              'flex flex-col items-center gap-1 rounded-xl border px-3 py-3 text-caption font-medium transition-colors',
+              visibility === 'private'
+                ? 'border-accent bg-[var(--accent-light)] text-accent'
+                : 'border-[var(--border)] text-[var(--text-secondary)]'
+            )}
+          >
+            <Lock size={18} />
+            Private
+            <span className="text-micro font-normal opacity-80">Only your account</span>
+          </button>
+        </div>
+      )}
+
       <input
         ref={inputRef}
         type="file"
@@ -72,7 +129,9 @@ export default function IcsImportButton({ onImported }: IcsImportButtonProps) {
         <p className="text-caption mt-2 text-[var(--danger-text)]">{error}</p>
       )}
       <p className="text-caption mt-2 text-center text-[var(--text-tertiary)]">
-        Export from Google Calendar or Outlook, then import here.
+        {canChoosePublic
+          ? 'Export from Google Calendar or Outlook, then import as public or private.'
+          : 'Export from Google Calendar or Outlook. Imports to your private routines only.'}
       </p>
     </div>
   );

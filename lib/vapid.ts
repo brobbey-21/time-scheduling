@@ -34,7 +34,10 @@ export async function sendWebPush(
   await webpush.sendNotification(
     subscription as webpush.PushSubscription,
     JSON.stringify(payload),
-    { TTL: 60 * 60 * 4 }
+    {
+      TTL: 60 * 60 * 24,
+      urgency: 'high',
+    }
   );
 }
 

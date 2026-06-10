@@ -9,7 +9,7 @@ import {
   toDateString,
 } from './utils';
 
-export const SCHEDULE_LOOKAHEAD_DAYS = 7;
+export const SCHEDULE_LOOKAHEAD_DAYS = 14;
 
 export interface ReminderSlot {
   id: string;
