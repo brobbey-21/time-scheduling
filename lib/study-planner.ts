@@ -1,4 +1,8 @@
-import { PLANNER_VERSION } from './study-profile';
+import {
+  getActivityWindows,
+  isValidWakeSleep,
+  PLANNER_VERSION,
+} from './study-profile';
 import type { ClassEntry, ClassType, DayOfWeek, StudyPreferences } from './types';
 import { DAYS } from './types';
 import { formatRestLabel, formatTime12, timeToMinutes } from './utils';
@@ -59,32 +63,54 @@ function getOccupiedIntervals(classes: ClassEntry[]): TimeInterval[] {
   }));
 }
 
-function getFreeIntervals(
-  wake: number,
-  sleep: number,
+function getFreeIntervalsInWindow(
+  windowStart: number,
+  windowEnd: number,
   occupied: TimeInterval[],
   minSlotMinutes: number
 ): TimeInterval[] {
-  const sorted = [...occupied].sort((a, b) => a.start - b.start);
-  const free: TimeInterval[] = [];
-  let cursor = wake;
+  const clipped = occupied
+    .filter((b) => b.end > windowStart && b.start < windowEnd)
+    .map((b) => ({
+      start: Math.max(b.start, windowStart),
+      end: Math.min(b.end, windowEnd),
+    }))
+    .sort((a, b) => a.start - b.start);
 
-  for (const block of sorted) {
+  const free: TimeInterval[] = [];
+  let cursor = windowStart;
+
+  for (const block of clipped) {
     if (block.start > cursor) {
-      const end = Math.min(block.start, sleep);
+      const end = Math.min(block.start, windowEnd);
       if (end - cursor >= minSlotMinutes) {
         free.push({ start: cursor, end });
       }
     }
     cursor = Math.max(cursor, block.end);
-    if (cursor >= sleep) break;
+    if (cursor >= windowEnd) break;
   }
 
-  if (cursor < sleep && sleep - cursor >= minSlotMinutes) {
-    free.push({ start: cursor, end: sleep });
+  if (cursor < windowEnd && windowEnd - cursor >= minSlotMinutes) {
+    free.push({ start: cursor, end: windowEnd });
   }
 
   return free;
+}
+
+function getFreeIntervals(
+  windows: TimeInterval[],
+  occupied: TimeInterval[],
+  minSlotMinutes: number
+): TimeInterval[] {
+  return windows.flatMap((window) =>
+    getFreeIntervalsInWindow(
+      window.start,
+      window.end,
+      occupied,
+      minSlotMinutes
+    )
+  );
 }
 
 function pickCourseLabel(
@@ -238,15 +264,13 @@ export function generateDayPlan(
   sharedClasses: ClassEntry[],
   prefs: StudyPreferences
 ): Omit<ClassEntry, 'createdAt' | 'updatedAt'>[] {
-  const wake = timeToMinutes(prefs.wakeTime);
-  const sleep = timeToMinutes(prefs.sleepTime);
-  if (sleep <= wake) return [];
+  if (!isValidWakeSleep(prefs.wakeTime, prefs.sleepTime)) return [];
 
+  const windows = getActivityWindows(prefs.wakeTime, prefs.sleepTime);
   const official = getOfficialClassesForDay(sharedClasses, day);
   const occupied = getOccupiedIntervals(official);
   const free = getFreeIntervals(
-    wake,
-    sleep,
+    windows,
     occupied,
     prefs.minStudyBlockMinutes
   );

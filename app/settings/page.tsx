@@ -20,7 +20,10 @@ import {
 } from 'lucide-react';
 import { applyWeekPlan } from '@/lib/planner-apply';
 import { syncAllClasses } from '@/lib/class-sync';
-import { isSleepAfterWake } from '@/lib/study-profile';
+import {
+  formatSleepScheduleLabel,
+  isValidWakeSleep,
+} from '@/lib/study-profile';
 import {
   dispatchOpenStudySetup,
 } from '@/lib/study-setup-events';
@@ -170,7 +173,7 @@ export default function SettingsPage() {
   };
 
   const handleSaveStudyPrefs = async () => {
-    if (!studyPrefs || !isSleepAfterWake(studyPrefs.wakeTime, studyPrefs.sleepTime)) return;
+    if (!studyPrefs || !isValidWakeSleep(studyPrefs.wakeTime, studyPrefs.sleepTime)) return;
     setSavingStudyPrefs(true);
     const profile = await saveStudyPreferences(studyPrefs);
     if (profile) setStudyPrefs(profile.preferences);
@@ -536,6 +539,12 @@ export default function SettingsPage() {
                 </label>
               </div>
 
+              {isValidWakeSleep(studyPrefs.wakeTime, studyPrefs.sleepTime) && (
+                <p className="text-caption text-[var(--text-secondary)]">
+                  {formatSleepScheduleLabel(studyPrefs.wakeTime, studyPrefs.sleepTime)}
+                </p>
+              )}
+
               <div className="flex items-center justify-between">
                 <span className="text-body">Include weekends</span>
                 <button
@@ -564,7 +573,7 @@ export default function SettingsPage() {
                 onClick={handleSaveStudyPrefs}
                 disabled={
                   savingStudyPrefs ||
-                  !isSleepAfterWake(studyPrefs.wakeTime, studyPrefs.sleepTime)
+                  !isValidWakeSleep(studyPrefs.wakeTime, studyPrefs.sleepTime)
                 }
                 className="w-full rounded-xl border border-[var(--border)] py-2.5 text-caption font-semibold disabled:opacity-60"
               >

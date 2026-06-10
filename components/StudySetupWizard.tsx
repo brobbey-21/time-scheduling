@@ -15,7 +15,11 @@ import {
 } from 'lucide-react';
 import { applyWeekPlan } from '@/lib/planner-apply';
 import { PLANNER_VERSION } from '@/lib/study-profile';
-import { isSleepAfterWake } from '@/lib/study-profile';
+import {
+  formatSleepScheduleLabel,
+  isOvernightSleep,
+  isValidWakeSleep,
+} from '@/lib/study-profile';
 import {
   fetchStudyProfile,
   saveStudyPreferences,
@@ -107,7 +111,12 @@ export default function StudySetupWizard() {
   }, [step, open, prefs]);
 
   const validSleep = useMemo(
-    () => isSleepAfterWake(prefs.wakeTime, prefs.sleepTime),
+    () => isValidWakeSleep(prefs.wakeTime, prefs.sleepTime),
+    [prefs.wakeTime, prefs.sleepTime]
+  );
+
+  const sleepScheduleLabel = useMemo(
+    () => formatSleepScheduleLabel(prefs.wakeTime, prefs.sleepTime),
     [prefs.wakeTime, prefs.sleepTime]
   );
 
@@ -161,7 +170,7 @@ export default function StudySetupWizard() {
   const bodies = [
     'How much focused study time do you want each day? We\'ll fit blocks around your official classes.',
     'We won\'t schedule study before this time.',
-    'Study and rest blocks will end before bedtime.',
+    'If you sleep after midnight, pick the next-morning time (e.g. 4:00 AM).',
     'Include weekends or stick to class days only.',
     'Here\'s how your plan looks. You can edit any block later under My Routines.',
   ];
@@ -260,9 +269,18 @@ export default function StudySetupWizard() {
                       className="text-title mt-2 w-full rounded-xl border border-[var(--border)] bg-bg-base px-4 py-3"
                     />
                   </label>
-                  {!validSleep && (
+                  {validSleep ? (
+                    <p className="text-caption mt-2 text-[var(--text-secondary)]">
+                      {sleepScheduleLabel}
+                      {isOvernightSleep(prefs.wakeTime, prefs.sleepTime) && (
+                        <span className="mt-1 block text-[var(--text-tertiary)]">
+                          Sleep is treated as the next day — perfect for late nights.
+                        </span>
+                      )}
+                    </p>
+                  ) : (
                     <p className="text-caption mt-2 text-[var(--danger-text)]">
-                      Sleep time must be after wake time.
+                      Wake and sleep times must be different.
                     </p>
                   )}
                 </div>
