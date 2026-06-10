@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Plus, Settings } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { FileUp, Plus, Settings } from 'lucide-react';
 import ClassCardCompact from '@/components/ClassCardCompact';
 import EmptyState from '@/components/EmptyState';
 import IcsImportButton from '@/components/IcsImportButton';
@@ -20,15 +21,24 @@ interface SessionUser {
   role: 'admin' | 'student';
 }
 
-export default function ManagePage() {
+function ManagePageContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [classes, setClasses] = useState<ClassEntry[]>([]);
-  const [tab, setTab] = useState<Tab>('schedule');
+  const [tab, setTab] = useState<Tab>('routines');
   const [editMode, setEditMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [user, setUser] = useState<SessionUser | null>(null);
   const [routineFilter, setRoutineFilter] = useState<RoutineFilter>('all');
 
   const load = () => getAllClasses().then(setClasses);
+
+  useEffect(() => {
+    const requested = searchParams.get('tab');
+    if (requested === 'schedule' || requested === 'routines') {
+      setTab(requested);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     load();
@@ -40,6 +50,13 @@ export default function ManagePage() {
     window.addEventListener('classes-changed', refresh);
     return () => window.removeEventListener('classes-changed', refresh);
   }, []);
+
+  const switchTab = (next: Tab) => {
+    setTab(next);
+    setEditMode(false);
+    setSelected(new Set());
+    router.replace(`/manage?tab=${next}`, { scroll: false });
+  };
 
   const scheduleClasses = classes
     .filter((c) => c.isDefault)
@@ -120,18 +137,14 @@ export default function ManagePage() {
       <div className="mb-5 flex gap-2">
         {(
           [
-            { id: 'schedule' as Tab, label: 'MN 3C Schedule' },
             { id: 'routines' as Tab, label: 'My Routines' },
+            { id: 'schedule' as Tab, label: 'MN 3C Schedule' },
           ] as const
         ).map(({ id, label }) => (
           <button
             key={id}
             type="button"
-            onClick={() => {
-              setTab(id);
-              setEditMode(false);
-              setSelected(new Set());
-            }}
+            onClick={() => switchTab(id)}
             className={cn(
               'rounded-full px-4 py-2 text-caption font-medium',
               tab === id
@@ -160,7 +173,7 @@ export default function ManagePage() {
               Managed by your class admin. Import your own copy under{' '}
               <button
                 type="button"
-                onClick={() => setTab('routines')}
+                onClick={() => switchTab('routines')}
                 className="font-medium text-accent"
               >
                 My Routines
@@ -173,18 +186,26 @@ export default function ManagePage() {
 
       {tab === 'routines' && (
         <>
-          <p className="text-caption mb-3 text-[var(--text-secondary)]">
-            Private to your account — study blocks, extra classes, or personal reminders.
-            Import a .ics file to bulk-add or replace manual routines.
-          </p>
-          <div className="mb-4">
+          <section className="card mb-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-light)]">
+                <FileUp size={20} className="text-accent" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-body font-semibold">Import timetable (.ics)</p>
+                <p className="text-caption mt-1 text-[var(--text-secondary)]">
+                  Bulk-add or replace your manual routines from Google Calendar or Outlook.
+                  Planned study blocks are kept.
+                </p>
+              </div>
+            </div>
             <IcsImportButton
               onImported={load}
               defaultVisibility="private"
               allowPublic={user?.role === 'admin'}
               showVisibilityChoice={user?.role === 'admin'}
             />
-          </div>
+          </section>
           <div className="mb-4 flex gap-2">
             {(
               [
@@ -222,14 +243,17 @@ export default function ManagePage() {
       )}
 
       {filtered.length === 0 ? (
-        <EmptyState
-          title={tab === 'schedule' ? 'No shared classes' : 'No routines yet'}
-          message={
-            tab === 'schedule'
-              ? 'The admin has not published the class schedule yet.'
-              : 'Add a personal routine with the + button. Only you will see it.'
-          }
-        />
+        tab === 'routines' ? (
+          <EmptyState
+            title="No routines yet"
+            message="Import a .ics file above, or add a single routine with the + button."
+          />
+        ) : (
+          <EmptyState
+            title="No shared classes"
+            message="The admin has not published the class schedule yet."
+          />
+        )
       ) : (
         <div className="space-y-3">
           {filtered.map((cls) => (
@@ -255,5 +279,22 @@ export default function ManagePage() {
         </Link>
       )}
     </main>
+  );
+}
+
+export default function ManagePage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="px-5 pt-8 pb-8">
+          <div className="animate-pulse space-y-3">
+            <div className="h-8 w-40 rounded-lg bg-[var(--border)]" />
+            <div className="h-24 rounded-2xl bg-[var(--border)]" />
+          </div>
+        </main>
+      }
+    >
+      <ManagePageContent />
+    </Suspense>
   );
 }

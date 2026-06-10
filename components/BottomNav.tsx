@@ -9,7 +9,7 @@ const NAV_ITEMS = [
   { href: '/', label: 'Today', icon: Home },
   { href: '/timetable', label: 'Timetable', icon: Calendar },
   { href: '/todos', label: 'Todos', icon: CheckSquare },
-  { href: '/manage', label: 'Manage', icon: Settings },
+  { href: '/manage?tab=routines', label: 'Routines', icon: Settings },
 ];
 
 export default function BottomNav() {
@@ -29,7 +29,9 @@ export default function BottomNav() {
           const active =
             href === '/'
               ? pathname === '/'
-              : pathname.startsWith(href);
+              : href.startsWith('/manage')
+                ? pathname.startsWith('/manage')
+                : pathname.startsWith(href);
           return (
             <Link
               key={href}
