@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Calendar, Users, Shield } from 'lucide-react';
+import { Calendar, Star, Users, Shield } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 
 const ADMIN_LINKS = [
@@ -16,6 +16,12 @@ const ADMIN_LINKS = [
     title: 'Members',
     description: 'See who joined and assign admins',
     icon: Users,
+  },
+  {
+    href: '/admin/ratings',
+    title: 'App Ratings',
+    description: 'See how students rated Class Time',
+    icon: Star,
   },
 ];
 

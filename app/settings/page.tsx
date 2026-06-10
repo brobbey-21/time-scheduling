@@ -29,6 +29,7 @@ import {
   saveStudyPreferences,
 } from '@/lib/study-profile-sync';
 import type { StudyPreferences } from '@/lib/types';
+import AppRatingCard from '@/components/AppRatingCard';
 import PageHeader from '@/components/PageHeader';
 import {
   clearAllTodos,
@@ -656,6 +657,15 @@ export default function SettingsPage() {
           </button>
         </div>
       </section>
+
+      {user && (
+        <section className="mb-6">
+          <p className="text-micro mb-3 uppercase text-[var(--text-tertiary)]">
+            Feedback
+          </p>
+          <AppRatingCard userName={user.name} />
+        </section>
+      )}
 
       <section className="mb-6">
         <p className="text-micro mb-3 uppercase text-[var(--text-tertiary)]">
