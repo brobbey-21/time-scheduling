@@ -1,12 +1,10 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { cohortHasSeedSchedule, cohortStorageSlug } from './cohorts';
+import { cohortStorageSlug } from './cohorts';
+import { dedupeImportedClasses } from './schedule-dedupe';
 import type { ClassEntry } from './types';
-import { OFFICIAL_CLASSES } from './timetable.config';
 import { assertPersistentStorage } from './storage-config';
 import { isUpstashConfigured, upstashCommand } from './upstash';
-
-const LEGACY_MN3C_SLUG = 'mn3c';
 
 function dataFile(cohort: string): string {
   const slug = cohortStorageSlug(cohort);
@@ -17,23 +15,15 @@ function redisKey(cohort: string): string {
   return `shared:schedule:${cohortStorageSlug(cohort)}`;
 }
 
-function legacyRedisKey(): string {
-  return `shared:schedule:${LEGACY_MN3C_SLUG}`;
-}
-
-function legacyDataFile(): string {
-  return path.join(process.cwd(), '.data', 'shared', `${LEGACY_MN3C_SLUG}-schedule.json`);
-}
-
-async function readRedis(key: string): Promise<ClassEntry[] | null> {
+async function readRedis(key: string): Promise<ClassEntry[] | undefined> {
   const result = (await upstashCommand(['GET', key])) as {
     result?: string | null;
   } | null;
-  if (!result?.result) return null;
+  if (result?.result == null) return undefined;
   try {
     return JSON.parse(result.result) as ClassEntry[];
   } catch {
-    return null;
+    return undefined;
   }
 }
 
@@ -42,12 +32,12 @@ async function writeRedis(key: string, classes: ClassEntry[]): Promise<boolean> 
   return result !== null;
 }
 
-async function readFile(file: string): Promise<ClassEntry[] | null> {
+async function readFile(file: string): Promise<ClassEntry[] | undefined> {
   try {
     const raw = await fs.readFile(file, 'utf8');
     return JSON.parse(raw) as ClassEntry[];
   } catch {
-    return null;
+    return undefined;
   }
 }
 
@@ -56,48 +46,27 @@ async function writeFile(file: string, classes: ClassEntry[]): Promise<void> {
   await fs.writeFile(file, JSON.stringify(classes, null, 2), 'utf8');
 }
 
-function seedOfficialClasses(): ClassEntry[] {
-  const now = Date.now();
-  return OFFICIAL_CLASSES.map((c) => ({
-    ...c,
-    isDefault: true,
-    createdAt: now,
-    updatedAt: now,
-  }));
-}
-
-async function readStoredSchedule(cohort: string): Promise<ClassEntry[] | null> {
+async function readStoredSchedule(cohort: string): Promise<ClassEntry[] | undefined> {
   const key = redisKey(cohort);
   const file = dataFile(cohort);
 
-  const redis = await readRedis(key);
-  if (redis && redis.length > 0) return redis;
-
-  const fromFile = await readFile(file);
-  if (fromFile && fromFile.length > 0) return fromFile;
-
-  if (cohort === 'MN 3C') {
-    const legacyRedis = await readRedis(legacyRedisKey());
-    if (legacyRedis && legacyRedis.length > 0) return legacyRedis;
-
-    const legacyFile = await readFile(legacyDataFile());
-    if (legacyFile && legacyFile.length > 0) return legacyFile;
+  if (isUpstashConfigured()) {
+    const redis = await readRedis(key);
+    if (redis !== undefined) return redis;
   }
 
-  return null;
+  return readFile(file);
 }
 
 export async function getSharedSchedule(cohort: string): Promise<ClassEntry[]> {
   const stored = await readStoredSchedule(cohort);
-  if (stored && stored.length > 0) return stored;
+  if (stored === undefined) return [];
 
-  if (cohortHasSeedSchedule(cohort)) {
-    const seeded = seedOfficialClasses();
-    await saveSharedSchedule(cohort, seeded);
-    return seeded;
+  const deduped = dedupeImportedClasses(stored);
+  if (deduped.length !== stored.length) {
+    await saveSharedSchedule(cohort, deduped);
   }
-
-  return [];
+  return deduped;
 }
 
 export async function saveSharedSchedule(
@@ -105,7 +74,7 @@ export async function saveSharedSchedule(
   classes: ClassEntry[]
 ): Promise<boolean> {
   assertPersistentStorage();
-  const payload = classes.map((c) => ({ ...c, isDefault: true }));
+  const payload = dedupeImportedClasses(classes.map((c) => ({ ...c, isDefault: true })));
   const key = redisKey(cohort);
   const file = dataFile(cohort);
 

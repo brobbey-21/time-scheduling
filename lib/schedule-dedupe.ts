@@ -1,13 +1,24 @@
 import { normalizeCourseCode } from './course-catalog';
 import type { ClassEntry } from './types';
 
-export function scheduleSlotKey(cls: Pick<ClassEntry, 'day' | 'startTime' | 'endTime' | 'courseCode'>): string {
-  return `${cls.day}|${cls.startTime}|${cls.endTime}|${normalizeCourseCode(cls.courseCode)}`;
+export function normalizeSlotCourseCode(code: string): string {
+  return normalizeCourseCode(
+    code
+      .replace(/\s*\([^)]*\)\s*/g, ' ')
+      .replace(/\s*\[[^\]]*\]\s*/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+  );
 }
 
-function slotScore(cls: Pick<ClassEntry, 'venue' | 'lecturer' | 'isDefault' | 'courseName' | 'notes'>): number {
+export function scheduleSlotKey(cls: Pick<ClassEntry, 'day' | 'startTime' | 'endTime' | 'courseCode'>): string {
+  return `${cls.day}|${cls.startTime}|${cls.endTime}|${normalizeSlotCourseCode(cls.courseCode)}`;
+}
+
+function slotScore(cls: Pick<ClassEntry, 'venue' | 'lecturer' | 'isDefault' | 'courseName' | 'notes' | 'type'>): number {
   let score = 0;
   if (cls.isDefault) score += 8;
+  if (cls.type !== 'STUDY' && cls.type !== 'REST') score += 6;
   if (cls.venue?.trim()) score += 3;
   if (cls.lecturer?.trim()) score += 2;
   if (cls.notes?.trim()) score += 1;
@@ -15,7 +26,7 @@ function slotScore(cls: Pick<ClassEntry, 'venue' | 'lecturer' | 'isDefault' | 'c
   return score;
 }
 
-function pickPreferredClass<T extends Pick<ClassEntry, 'venue' | 'lecturer' | 'isDefault' | 'courseName' | 'notes'>>(
+function pickPreferredClass<T extends Pick<ClassEntry, 'venue' | 'lecturer' | 'isDefault' | 'courseName' | 'notes' | 'type'>>(
   a: T,
   b: T
 ): T {

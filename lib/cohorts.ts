@@ -2,7 +2,7 @@ export interface CohortDefinition {
   id: string;
   label: string;
   description: string;
-  /** Pre-fill official timetable (MN 3C only). */
+  /** @deprecated Runtime no longer auto-seeds; admin imports the official timetable. */
   hasSeedSchedule: boolean;
 }
 
@@ -10,7 +10,7 @@ const MN_3C: CohortDefinition = {
   id: 'MN 3C',
   label: 'MN 3C',
   description: 'Mining Engineering — Year 3',
-  hasSeedSchedule: true,
+  hasSeedSchedule: false,
 };
 
 const DEFAULT_EXTRA_COHORTS: CohortDefinition[] = [
