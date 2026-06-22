@@ -26,7 +26,7 @@ import type {
   StudyProfile,
 } from './types';
 import { DAYS } from './types';
-import { generateDeepSeekJson } from './deepseek';
+import { generatePlannerJson, friendlyAiError, isPlannerLlmConfigured } from './planner-llm';
 import { getPlanningDays } from './study-planner';
 
 interface RawAiResponse {
@@ -300,25 +300,45 @@ function mergeLearningRoutes(
     .slice(0, 8);
 }
 
-export async function optimizeStudyPlan(
+function buildDeterministicOptimization(
   prefs: StudyPreferences,
-  profile: StudyProfile,
   sharedClasses: ClassEntry[],
-  _personalClasses: ClassEntry[]
-): Promise<PlannerAiOptimization> {
-  const baselineRoute = predictLearningRoute(sharedClasses);
-  const routeWeights = learningRouteToCourseWeights(baselineRoute);
-  const baselinePlaybooks = buildWeekPlaybooks(sharedClasses, prefs);
+  baselineRoute: ReturnType<typeof predictLearningRoute>,
+  baselinePlaybooks: DailyPlaybook[],
+  routeWeights: Record<string, number>
+): PlannerAiOptimization {
+  const days = getPlanningDays(prefs);
+  const dailyStudyMinutes: Partial<Record<DayOfWeek, number>> = {};
+  for (const day of days) {
+    dailyStudyMinutes[day] = prefs.dailyBudgetMinutes;
+  }
 
-  const prompt = buildPrompt(
-    prefs,
-    profile,
-    sharedClasses,
-    baselinePlaybooks,
-    baselineRoute
-  );
-  const raw = await generateDeepSeekJson<RawAiResponse>(prompt);
+  return {
+    summary:
+      'Smart plan built from your timetable: ~6h/day, max 2h per course, evening blocks prep tomorrow. 3-credit courses prioritized for CWA.',
+    tips: [
+      'Regenerate after the admin updates the class schedule.',
+      'Use evening study blocks to prep for tomorrow’s first classes.',
+      'Focus extra time on 3-credit courses — they weigh most on CWA.',
+    ],
+    preferences: {},
+    dailyStudyMinutes,
+    courseFocus: normalizeCourseFocus(undefined, sharedClasses, routeWeights),
+    learningRoute: baselineRoute.nextSteps,
+    dailyPlaybooks: baselinePlaybooks,
+    weeklyStudyTargets: baselineRoute.weeklyStudyTargets,
+    generatedAt: Date.now(),
+  };
+}
 
+function buildOptimizationFromAi(
+  raw: RawAiResponse,
+  prefs: StudyPreferences,
+  sharedClasses: ClassEntry[],
+  baselineRoute: ReturnType<typeof predictLearningRoute>,
+  baselinePlaybooks: DailyPlaybook[],
+  routeWeights: Record<string, number>
+): PlannerAiOptimization {
   const preferences = normalizePreferences(raw.preferences, prefs);
   const mergedPrefs = { ...prefs, ...preferences };
 
@@ -352,4 +372,60 @@ export async function optimizeStudyPlan(
     weeklyStudyTargets: baselineRoute.weeklyStudyTargets,
     generatedAt: Date.now(),
   };
+}
+
+export async function optimizeStudyPlan(
+  prefs: StudyPreferences,
+  profile: StudyProfile,
+  sharedClasses: ClassEntry[],
+  _personalClasses: ClassEntry[]
+): Promise<{ optimization: PlannerAiOptimization; aiWarning?: string }> {
+  const baselineRoute = predictLearningRoute(sharedClasses);
+  const routeWeights = learningRouteToCourseWeights(baselineRoute);
+  const baselinePlaybooks = buildWeekPlaybooks(sharedClasses, prefs);
+
+  if (!isPlannerLlmConfigured()) {
+    return {
+      optimization: buildDeterministicOptimization(
+        prefs,
+        sharedClasses,
+        baselineRoute,
+        baselinePlaybooks,
+        routeWeights
+      ),
+    };
+  }
+
+  const prompt = buildPrompt(
+    prefs,
+    profile,
+    sharedClasses,
+    baselinePlaybooks,
+    baselineRoute
+  );
+
+  try {
+    const raw = await generatePlannerJson<RawAiResponse>(prompt);
+    return {
+      optimization: buildOptimizationFromAi(
+        raw,
+        prefs,
+        sharedClasses,
+        baselineRoute,
+        baselinePlaybooks,
+        routeWeights
+      ),
+    };
+  } catch (error) {
+    return {
+      optimization: buildDeterministicOptimization(
+        prefs,
+        sharedClasses,
+        baselineRoute,
+        baselinePlaybooks,
+        routeWeights
+      ),
+      aiWarning: friendlyAiError(error),
+    };
+  }
 }

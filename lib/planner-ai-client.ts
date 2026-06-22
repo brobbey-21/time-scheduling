@@ -4,6 +4,7 @@ import type { PlannerAiOptimization } from './types';
 
 export async function fetchPlannerOptimization(): Promise<{
   optimization: PlannerAiOptimization;
+  aiWarning?: string;
 } | null> {
   try {
     const res = await fetch('/api/planner/optimize', {
@@ -16,7 +17,10 @@ export async function fetchPlannerOptimization(): Promise<{
       throw new Error(data.error ?? 'Optimization failed');
     }
 
-    return (await res.json()) as { optimization: PlannerAiOptimization };
+    return (await res.json()) as {
+      optimization: PlannerAiOptimization;
+      aiWarning?: string;
+    };
   } catch (error) {
     if (error instanceof Error) throw error;
     throw new Error('Optimization failed');

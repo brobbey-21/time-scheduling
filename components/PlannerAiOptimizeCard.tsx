@@ -34,14 +34,17 @@ export default function PlannerAiOptimizeCard({
   const [optimizing, setOptimizing] = useState(false);
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState('');
+  const [aiWarning, setAiWarning] = useState('');
 
   const handleOptimize = async () => {
     setError('');
+    setAiWarning('');
     setOptimizing(true);
     try {
       const result = await fetchPlannerOptimization();
       if (result?.optimization) {
         setOptimization(result.optimization);
+        if (result.aiWarning) setAiWarning(result.aiWarning);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not optimize plan');
@@ -106,6 +109,9 @@ export default function PlannerAiOptimizeCard({
       </button>
 
       {error && <p className="text-caption text-[var(--danger-text)]">{error}</p>}
+      {aiWarning && !error && (
+        <p className="text-caption text-[var(--text-secondary)]">{aiWarning}</p>
+      )}
 
       {optimization && (
         <div className="space-y-3 rounded-xl bg-bg-card p-3">

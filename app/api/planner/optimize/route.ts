@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth-session';
 import { normalizeCourseCode, setCourseCreditOverrides } from '@/lib/course-catalog';
 import { getCourseRegistry } from '@/lib/course-registry-storage';
-import { isDeepSeekConfigured } from '@/lib/deepseek';
+import { isPlannerLlmConfigured } from '@/lib/planner-llm';
 import { optimizeStudyPlan } from '@/lib/planner-optimize';
 import { normalizeStudyProfile } from '@/lib/study-profile';
 import { getSharedSchedule } from '@/lib/shared-schedule-storage';
@@ -16,13 +16,6 @@ export async function POST() {
   const user = await getSessionUser();
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  if (!isDeepSeekConfigured()) {
-    return NextResponse.json(
-      { error: 'AI planner is not configured. Add DEEPSEEK_API_KEY on the server.' },
-      { status: 503 }
-    );
   }
 
   try {
@@ -41,7 +34,7 @@ export async function POST() {
     }
     setCourseCreditOverrides(creditMap);
 
-    const optimization = await optimizeStudyPlan(
+    const { optimization, aiWarning } = await optimizeStudyPlan(
       profile.preferences,
       profile,
       sharedClasses,
@@ -55,7 +48,12 @@ export async function POST() {
 
     await saveUserStudyProfile(user.id, updatedProfile);
 
-    return NextResponse.json({ ok: true, optimization });
+    return NextResponse.json({
+      ok: true,
+      optimization,
+      aiWarning,
+      aiConfigured: isPlannerLlmConfigured(),
+    });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Failed to optimize study plan';
