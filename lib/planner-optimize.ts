@@ -26,7 +26,7 @@ import type {
   StudyProfile,
 } from './types';
 import { DAYS } from './types';
-import { generateGeminiJson } from './gemini';
+import { generateDeepSeekJson } from './deepseek';
 import { getPlanningDays } from './study-planner';
 
 interface RawAiResponse {
@@ -317,7 +317,7 @@ export async function optimizeStudyPlan(
     baselinePlaybooks,
     baselineRoute
   );
-  const raw = await generateGeminiJson<RawAiResponse>(prompt);
+  const raw = await generateDeepSeekJson<RawAiResponse>(prompt);
 
   const preferences = normalizePreferences(raw.preferences, prefs);
   const mergedPrefs = { ...prefs, ...preferences };

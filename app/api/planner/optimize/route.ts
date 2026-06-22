@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth-session';
 import { normalizeCourseCode, setCourseCreditOverrides } from '@/lib/course-catalog';
 import { getCourseRegistry } from '@/lib/course-registry-storage';
-import { isGeminiConfigured } from '@/lib/gemini';
+import { isDeepSeekConfigured } from '@/lib/deepseek';
 import { optimizeStudyPlan } from '@/lib/planner-optimize';
 import { normalizeStudyProfile } from '@/lib/study-profile';
 import { getSharedSchedule } from '@/lib/shared-schedule-storage';
@@ -18,9 +18,9 @@ export async function POST() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  if (!isGeminiConfigured()) {
+  if (!isDeepSeekConfigured()) {
     return NextResponse.json(
-      { error: 'AI planner is not configured. Add GEMINI_API_KEY on the server.' },
+      { error: 'AI planner is not configured. Add DEEPSEEK_API_KEY on the server.' },
       { status: 503 }
     );
   }
