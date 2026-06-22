@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Bell, ChevronRight, Plus, Sun } from 'lucide-react';
+import { Bell, Plus, Sun } from 'lucide-react';
 import DailyStudyGuide from '@/components/DailyStudyGuide';
 import BottomSheet from '@/components/BottomSheet';
-import ClassCard from '@/components/ClassCard';
 import EmptyState from '@/components/EmptyState';
 import IOSBanner from '@/components/IOSBanner';
 import NextUpCard from '@/components/NextUpCard';
+import { TodaySchedulePreview, TodaySection } from '@/components/TodaySections';
 import TodoItem from '@/components/TodoItem';
 import { addTodo, getClassesByDay, getSetting, getTodosByDate } from '@/lib/db';
 import {
@@ -21,10 +21,21 @@ import {
   formatDateLong,
   getDayNameFromDate,
   getGreeting,
+  isClassActive,
   isClassUpcoming,
   isWeekendDay,
+  timeToMinutes,
   toDateString,
 } from '@/lib/utils';
+
+const SCHEDULE_PREVIEW = 2;
+const TASK_PREVIEW = 2;
+
+function isClassPast(endTime: string): boolean {
+  const now = new Date();
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  return timeToMinutes(endTime) < nowMins;
+}
 
 export default function TodayPage() {
   const [viewDate, setViewDate] = useState<Date | null>(null);
@@ -82,9 +93,14 @@ export default function TodayPage() {
     };
   }, [load, todayDay, dateStr]);
 
-  const nextUp = classes.find((c) => isClassUpcoming(c.startTime));
+  const nextUp = classes.find((c) => isClassUpcoming(c.startTime) || isClassActive(c.startTime, c.endTime));
   const pendingTodos = todos.filter((t) => !t.completed);
-  const topTodos = pendingTodos.slice(0, 3);
+  const topTodos = pendingTodos.slice(0, TASK_PREVIEW);
+
+  const remainingClasses = classes.filter(
+    (c) => !isClassPast(c.endTime) && c.id !== nextUp?.id
+  );
+  const schedulePreview = remainingClasses.slice(0, SCHEDULE_PREVIEW);
 
   const handleToggleTodo = async (id: string) => {
     const { updateTodo } = await import('@/lib/db');
@@ -170,34 +186,39 @@ export default function TodayPage() {
   }
 
   return (
-    <main className="px-5 pt-8">
+    <main className="px-5 pt-6 pb-8">
       <IOSBanner />
 
-      <header className="mb-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-caption text-[var(--text-secondary)]">
-              {getGreeting()},
-            </p>
-            <h1 className="text-display">{userName}</h1>
-            <p className="text-caption mt-1 text-[var(--text-secondary)]">
+      <header className="mb-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-micro uppercase tracking-wide text-[var(--text-tertiary)]">
               {formatDateLong(viewDate)}
             </p>
-            {isWeekend && (
-              <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-micro font-semibold uppercase tracking-wide text-amber-700">
-                <Sun size={12} />
-                Weekend
+            <h1 className="text-display mt-0.5 leading-tight">
+              {getGreeting()}, {userName}
+            </h1>
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              <span className="rounded-full bg-[var(--bg-base)] px-2.5 py-1 text-micro font-medium text-[var(--text-secondary)]">
+                {scheduleSummary}
               </span>
-            )}
-            <p className="text-caption mt-2 font-medium text-accent">
-              {scheduleSummary} • {pendingTodos.length} task
-              {pendingTodos.length === 1 ? '' : 's'}
-            </p>
+              {pendingTodos.length > 0 && (
+                <span className="rounded-full bg-[var(--accent-light)] px-2.5 py-1 text-micro font-medium text-accent">
+                  {pendingTodos.length} task{pendingTodos.length === 1 ? '' : 's'}
+                </span>
+              )}
+              {isWeekend && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-micro font-semibold text-amber-700">
+                  <Sun size={11} />
+                  Weekend
+                </span>
+              )}
+            </div>
           </div>
           <button
             type="button"
             onClick={handleBellClick}
-            className="rounded-full bg-bg-card p-2.5 shadow-sm"
+            className="shrink-0 rounded-full bg-bg-card p-2.5 shadow-sm"
             aria-label="Notifications"
           >
             <Bell size={20} className="text-accent" />
@@ -206,74 +227,41 @@ export default function TodayPage() {
       </header>
 
       {nextUp && (
-        <section className="mb-6">
+        <section className="mb-5">
           <NextUpCard cls={nextUp} />
         </section>
       )}
 
       <DailyStudyGuide />
 
-      <section className="mb-6">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-subtitle">
-            {isWeekend ? `${todayDay}'s Schedule` : "Today's Schedule"}
-          </h2>
-          <Link
-            href={timetableHref}
-            className="flex items-center gap-0.5 text-caption font-medium text-accent"
-          >
-            See all <ChevronRight size={14} />
-          </Link>
-        </div>
-        {classes.length === 0 ? (
-          <EmptyState
-            icon={Sun}
-            title={isWeekend ? 'Weekend is clear' : 'No classes today'}
-            message={
-              isWeekend
-                ? `Nothing on your ${todayDay} timetable. Add a class or enjoy the break.`
-                : 'Enjoy your free day!'
-            }
-          />
-        ) : (
-          <div className="space-y-3">
-            {classes.map((cls) => (
-              <ClassCard key={cls.id} cls={cls} showTime />
-            ))}
-          </div>
-        )}
-      </section>
+      <TodaySection title="Up next" href={timetableHref} badge={classes.length}>
+        <TodaySchedulePreview
+          classes={schedulePreview}
+          totalCount={remainingClasses.length}
+          timetableHref={timetableHref}
+          emptyTitle={isWeekend ? 'Weekend is clear' : 'No classes left today'}
+          emptyMessage={
+            isWeekend
+              ? `Nothing left on ${todayDay}. Enjoy the break.`
+              : classes.length === 0
+                ? 'Enjoy your free day!'
+                : 'All done for today — nice work.'
+          }
+        />
+      </TodaySection>
 
-      <section className="mb-8">
-        <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h2 className="text-subtitle">
-              {isWeekend ? `${todayDay}'s Tasks` : "Today's Tasks"}
-            </h2>
-            {pendingTodos.length > 0 && (
-              <span className="rounded-full bg-[var(--accent-light)] px-2 py-0.5 text-micro font-semibold text-accent">
-                {pendingTodos.length}
-              </span>
-            )}
-          </div>
-          <Link
-            href={`/todos?date=${dateStr}`}
-            className="flex items-center gap-0.5 text-caption font-medium text-accent"
-          >
-            See all <ChevronRight size={14} />
-          </Link>
-        </div>
+      <TodaySection
+        title="Tasks"
+        href={`/todos?date=${dateStr}`}
+        badge={pendingTodos.length}
+      >
         {topTodos.length === 0 ? (
           <EmptyState
             title="No tasks yet"
-            message={
-              isWeekend
-                ? 'Add something you want to get done this weekend.'
-                : 'Tap + to add a quick task.'
-            }
+            message="Tap + to add a quick task for today."
           />
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {topTodos.map((todo) => (
               <TodoItem
                 key={todo.id}
@@ -284,9 +272,17 @@ export default function TodayPage() {
                 onSetReminder={handleSetReminder}
               />
             ))}
+            {pendingTodos.length > TASK_PREVIEW && (
+              <Link
+                href={`/todos?date=${dateStr}`}
+                className="block rounded-xl border border-dashed border-[var(--border)] py-2.5 text-center text-caption font-medium text-accent"
+              >
+                +{pendingTodos.length - TASK_PREVIEW} more tasks
+              </Link>
+            )}
           </div>
         )}
-      </section>
+      </TodaySection>
 
       <button
         type="button"

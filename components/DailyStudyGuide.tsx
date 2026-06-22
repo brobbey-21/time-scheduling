@@ -1,7 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CalendarClock, Moon, Sparkles, Sun } from 'lucide-react';
+import Link from 'next/link';
+import {
+  CalendarClock,
+  ChevronDown,
+  ChevronUp,
+  Moon,
+  Sparkles,
+  Sun,
+} from 'lucide-react';
 import { getAllClasses } from '@/lib/db';
 import { buildDayPlaybook } from '@/lib/study-agenda';
 import { fetchStudyProfile } from '@/lib/study-profile-sync';
@@ -28,54 +36,54 @@ function formatMinutes(minutes: number): string {
 function StudyIntentRow({
   intent,
   variant,
+  compact = false,
 }: {
   intent: StudyIntent;
   variant: 'day' | 'evening';
+  compact?: boolean;
 }) {
   const isHighCwa = intent.creditHours === 3;
+
+  if (compact) {
+    return (
+      <div className="flex items-center justify-between gap-2 py-2">
+        <div className="min-w-0">
+          <p className="text-caption truncate font-medium">{intent.courseName}</p>
+          <p className="text-micro truncate text-[var(--text-tertiary)]">
+            {intent.courseCode}
+            {isHighCwa ? ' · High CWA' : ''}
+          </p>
+        </div>
+        <span className="shrink-0 text-micro font-semibold text-[var(--text-secondary)]">
+          {formatMinutes(intent.minutes)}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-xl border px-3.5 py-3',
+        'rounded-xl border px-3 py-2.5',
         variant === 'evening'
-          ? 'border-indigo-200/80 bg-gradient-to-br from-indigo-50/90 to-[var(--bg-base)]'
-          : 'border-[var(--border)] bg-gradient-to-br from-[var(--accent-light)]/35 to-[var(--bg-base)]'
+          ? 'border-indigo-200/60 bg-indigo-50/40'
+          : 'border-[var(--border)] bg-[var(--bg-base)]'
       )}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <p className="text-body font-semibold leading-snug text-[var(--text-primary)]">
-            {intent.courseName}
-          </p>
-          <p className="text-micro mt-0.5 font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
-            {intent.courseCode}
-          </p>
+          <p className="text-caption font-semibold leading-snug">{intent.courseName}</p>
+          <p className="text-micro text-[var(--text-tertiary)]">{intent.courseCode}</p>
         </div>
-        <span
-          className={cn(
-            'shrink-0 rounded-full px-2.5 py-1 text-micro font-semibold',
-            variant === 'evening'
-              ? 'bg-indigo-100 text-indigo-800'
-              : 'bg-white/80 text-[var(--text-secondary)] shadow-sm'
-          )}
-        >
+        <span className="shrink-0 text-micro font-semibold text-[var(--text-secondary)]">
           {formatMinutes(intent.minutes)}
         </span>
       </div>
-
-      <p className="text-caption mt-2.5 leading-relaxed text-[var(--text-secondary)]">
-        {intent.activity}
-      </p>
-
-      <div className="mt-2.5 flex flex-wrap items-center gap-2">
-        {isHighCwa && (
-          <span className="rounded-full bg-[var(--accent-light)] px-2 py-0.5 text-micro font-semibold text-accent">
-            High CWA
-          </span>
-        )}
-        <span className="text-micro text-[var(--text-tertiary)]">Prep for {intent.prepFor}</span>
-      </div>
+      {!compact && (
+        <p className="text-micro mt-1.5 line-clamp-2 text-[var(--text-secondary)]">
+          {intent.activity}
+        </p>
+      )}
     </div>
   );
 }
@@ -84,6 +92,7 @@ export default function DailyStudyGuide() {
   const [todayPlaybook, setTodayPlaybook] = useState<DailyPlaybook | null>(null);
   const [tomorrowDay, setTomorrowDay] = useState<DayOfWeek | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     void (async () => {
@@ -120,87 +129,115 @@ export default function DailyStudyGuide() {
   const studyIntents = todayPlaybook.intents.filter((i) => !i.eveningOnly);
   const eveningIntents = todayPlaybook.intents.filter((i) => i.eveningOnly);
   const totalMinutes = todayPlaybook.intents.reduce((sum, i) => sum + i.minutes, 0);
-  const budget = 360;
-  const progress = Math.min(100, Math.round((totalMinutes / budget) * 100));
+  const intentCount = todayPlaybook.intents.length;
+
+  if (intentCount === 0) return null;
+
+  const previewDay = studyIntents.slice(0, 2);
+  const previewEvening = eveningIntents.slice(0, 1);
 
   return (
-    <section className="card mb-6 overflow-hidden p-0">
-      <div className="border-b border-[var(--border)] bg-gradient-to-r from-[var(--accent-light)]/60 to-transparent px-4 py-4">
-        <div className="flex items-start gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/80 shadow-sm">
-            <Sparkles size={22} className="text-accent" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-subtitle font-semibold">Today&apos;s study plan</p>
-            <p className="text-caption mt-1 leading-relaxed text-[var(--text-secondary)]">
-              {todayPlaybook.headline}
-            </p>
-          </div>
+    <section className="mb-5 overflow-hidden rounded-2xl border border-[var(--border)] bg-bg-card">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="flex w-full items-start gap-3 px-4 py-3.5 text-left"
+        aria-expanded={expanded}
+      >
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-light)]">
+          <Sparkles size={18} className="text-accent" />
         </div>
-
-        {totalMinutes > 0 && (
-          <div className="mt-4">
-            <div className="mb-1.5 flex items-center justify-between text-micro">
-              <span className="text-[var(--text-tertiary)]">Study budget</span>
-              <span className="font-semibold text-[var(--text-secondary)]">
-                {formatMinutes(totalMinutes)} planned
-              </span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-white/60">
-              <div
-                className="h-full rounded-full bg-accent transition-all"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-body font-semibold">Study plan</p>
+            <span className="shrink-0 rounded-full bg-[var(--bg-base)] px-2 py-0.5 text-micro font-semibold text-[var(--text-secondary)]">
+              {formatMinutes(totalMinutes)}
+            </span>
           </div>
+          <p className="text-caption mt-0.5 line-clamp-2 text-[var(--text-secondary)]">
+            {todayPlaybook.headline}
+          </p>
+        </div>
+        {expanded ? (
+          <ChevronUp size={18} className="mt-1 shrink-0 text-[var(--text-tertiary)]" />
+        ) : (
+          <ChevronDown size={18} className="mt-1 shrink-0 text-[var(--text-tertiary)]" />
         )}
-      </div>
+      </button>
 
-      <div className="space-y-5 px-4 py-4">
-        {studyIntents.length > 0 && (
-          <div className="space-y-2.5">
-            <p className="flex items-center gap-1.5 text-micro font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">
-              <Sun size={12} className="text-amber-500" />
-              Before classes
-            </p>
-            {studyIntents.map((intent, i) => (
-              <StudyIntentRow key={`${intent.courseCode}-${i}`} intent={intent} variant="day" />
-            ))}
-          </div>
-        )}
+      {!expanded && tomorrowDay && todayPlaybook.tomorrowPreview && (
+        <div className="border-t border-[var(--border)] px-4 py-2.5">
+          <p className="text-micro flex items-center gap-1.5 text-[var(--text-tertiary)]">
+            <CalendarClock size={12} className="text-accent" />
+            Tomorrow ({DAY_SHORT[tomorrowDay]}) · {todayPlaybook.tomorrowPreview}
+          </p>
+        </div>
+      )}
 
-        {eveningIntents.length > 0 && (
-          <div className="space-y-2.5">
-            <p className="flex items-center gap-1.5 text-micro font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">
-              <Moon size={12} className="text-indigo-500" />
-              Tonight — prep tomorrow
-            </p>
-            {eveningIntents.map((intent, i) => (
-              <StudyIntentRow
-                key={`eve-${intent.courseCode}-${i}`}
-                intent={intent}
-                variant="evening"
-              />
-            ))}
-          </div>
-        )}
-
-        {tomorrowDay && todayPlaybook.tomorrowPreview && (
-          <div className="flex gap-3 rounded-xl border border-accent/25 bg-[var(--accent-light)]/25 p-3.5">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/80">
-              <CalendarClock size={18} className="text-accent" />
-            </div>
+      {expanded && (
+        <div className="space-y-4 border-t border-[var(--border)] px-4 py-3">
+          {studyIntents.length > 0 && (
             <div>
-              <p className="text-caption font-semibold">
-                Tomorrow · {DAY_SHORT[tomorrowDay]}
+              <p className="mb-2 flex items-center gap-1.5 text-micro font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">
+                <Sun size={12} className="text-amber-500" />
+                Before classes
               </p>
-              <p className="text-caption mt-1 leading-relaxed text-[var(--text-secondary)]">
-                {todayPlaybook.tomorrowPreview}
-              </p>
+              <div className="space-y-2">
+                {(studyIntents.length > 3 ? previewDay : studyIntents).map((intent, i) => (
+                  <StudyIntentRow key={`${intent.courseCode}-${i}`} intent={intent} variant="day" />
+                ))}
+                {studyIntents.length > 3 && (
+                  <p className="text-micro text-[var(--text-tertiary)]">
+                    +{studyIntents.length - 2} more — see Timetable
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+
+          {eveningIntents.length > 0 && (
+            <div>
+              <p className="mb-2 flex items-center gap-1.5 text-micro font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">
+                <Moon size={12} className="text-indigo-500" />
+                Tonight
+              </p>
+              <div className="space-y-2">
+                {(eveningIntents.length > 3 ? previewEvening : eveningIntents).map(
+                  (intent, i) => (
+                    <StudyIntentRow
+                      key={`eve-${intent.courseCode}-${i}`}
+                      intent={intent}
+                      variant="evening"
+                    />
+                  )
+                )}
+                {eveningIntents.length > 3 && (
+                  <p className="text-micro text-[var(--text-tertiary)]">
+                    +{eveningIntents.length - 1} more — see Timetable
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {tomorrowDay && todayPlaybook.tomorrowPreview && (
+            <p className="text-caption rounded-lg bg-[var(--accent-light)]/40 px-3 py-2 text-[var(--text-secondary)]">
+              <span className="font-medium text-[var(--text-primary)]">
+                Tomorrow ({DAY_SHORT[tomorrowDay]})
+              </span>
+              {' · '}
+              {todayPlaybook.tomorrowPreview}
+            </p>
+          )}
+
+          <Link
+            href="/timetable"
+            className="block text-center text-caption font-medium text-accent"
+          >
+            Open full timetable
+          </Link>
+        </div>
+      )}
     </section>
   );
 }
