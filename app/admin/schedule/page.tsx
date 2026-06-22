@@ -35,7 +35,7 @@ export default function AdminSchedulePage() {
   const handleClearAll = async () => {
     if (
       !confirm(
-        `Clear the entire official ${cohort} timetable? This removes all shared classes for every student.`
+        `Clear the entire ${cohort} official timetable and your personal routines on this device? Students will see an empty schedule until you import again.`
       )
     ) {
       return;

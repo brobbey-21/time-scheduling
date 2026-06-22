@@ -28,5 +28,25 @@ export async function saveSharedSchedule(
 }
 
 export async function clearSharedSchedule(): Promise<void> {
-  await saveSharedSchedule([], { replaceRegistry: true });
+  const sharedRes = await fetch('/api/schedule/shared', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ classes: [], replaceRegistry: true }),
+  });
+  if (!sharedRes.ok) {
+    const data = (await sharedRes.json()) as { error?: string };
+    throw new Error(data.error ?? 'Failed to clear shared schedule');
+  }
+
+  const personalRes = await fetch('/api/classes', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ classes: [] }),
+  });
+  if (!personalRes.ok) {
+    const data = (await personalRes.json()) as { error?: string };
+    throw new Error(data.error ?? 'Failed to clear personal routines');
+  }
+
+  await syncAllClasses();
 }

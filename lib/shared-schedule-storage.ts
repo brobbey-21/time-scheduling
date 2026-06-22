@@ -11,6 +11,12 @@ function dataFile(cohort: string): string {
   return path.join(process.cwd(), '.data', 'shared', `${slug}-schedule.json`);
 }
 
+const LEGACY_MN3C_SLUG = 'mn3c';
+
+function legacyRedisKey(): string {
+  return `shared:schedule:${LEGACY_MN3C_SLUG}`;
+}
+
 function redisKey(cohort: string): string {
   return `shared:schedule:${cohortStorageSlug(cohort)}`;
 }
@@ -80,8 +86,22 @@ export async function saveSharedSchedule(
 
   if (isUpstashConfigured()) {
     const ok = await writeRedis(key, payload);
-    if (ok) return true;
+    if (ok) {
+      if (cohort === 'MN 3C') {
+        await writeRedis(legacyRedisKey(), payload);
+      }
+      return true;
+    }
   }
   await writeFile(file, payload);
+  if (cohort === 'MN 3C') {
+    const legacyFile = path.join(
+      process.cwd(),
+      '.data',
+      'shared',
+      `${LEGACY_MN3C_SLUG}-schedule.json`
+    );
+    await writeFile(legacyFile, payload);
+  }
   return true;
 }

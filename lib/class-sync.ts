@@ -1,7 +1,7 @@
 import { getAllClasses, replaceAllClasses } from './db';
 import { notifyScheduleRefresh } from './notifications';
 import { dedupeScheduleClasses, stripPersonalOverlappingShared } from './schedule-dedupe';
-import { composeSchedule, getPersonalClasses } from './schedule-utils';
+import { composeSchedule, getPersonalClasses, getSharedClasses } from './schedule-utils';
 import type { ClassEntry } from './types';
 
 function classTimestamp(cls: ClassEntry): number {
@@ -73,27 +73,22 @@ export async function syncAllClasses(): Promise<boolean> {
 
     if (sharedRes.status === 401 || personalRes.status === 401) return false;
 
-    let shared: ClassEntry[] = [];
+    const local = await getAllClasses();
+
+    let shared: ClassEntry[] = getSharedClasses(local);
     if (sharedRes.ok) {
       const data = (await sharedRes.json()) as { classes?: ClassEntry[] };
       shared = data.classes ?? [];
     }
 
-    const local = await getAllClasses();
-    const localPersonal = getPersonalClasses(local);
-
-    let personal = localPersonal;
+    let personal: ClassEntry[] = getPersonalClasses(local);
     if (personalRes.ok) {
       const data = (await personalRes.json()) as { classes?: ClassEntry[] };
-      personal = mergeClasses(localPersonal, data.classes ?? []);
+      personal = data.classes ?? [];
     }
 
     personal = stripPersonalOverlappingShared(shared, personal);
     const schedule = dedupeScheduleClasses(composeSchedule(shared, personal));
-
-    if (personalRes.ok) {
-      await pushPersonalClasses(personal);
-    }
 
     if (sharedRes.ok || personalRes.ok) {
       await replaceAllClasses(schedule);
@@ -107,6 +102,23 @@ export async function syncAllClasses(): Promise<boolean> {
     return false;
   } finally {
     pulling = false;
+  }
+}
+
+/** Wipe personal routines on server and reload the timetable from the server. */
+export async function clearPersonalTimetable(): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+
+  try {
+    const res = await fetch('/api/classes', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ classes: [] }),
+    });
+    if (!res.ok) return false;
+    return syncAllClasses();
+  } catch {
+    return false;
   }
 }
 

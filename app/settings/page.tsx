@@ -19,7 +19,7 @@ import {
   User,
 } from 'lucide-react';
 import { applyWeekPlan, clearPlannerBlocksFromTimetable } from '@/lib/planner-apply';
-import { syncAllClasses } from '@/lib/class-sync';
+import { syncAllClasses, clearPersonalTimetable } from '@/lib/class-sync';
 import {
   formatSleepScheduleLabel,
   isValidWakeSleep,
@@ -85,6 +85,7 @@ export default function SettingsPage() {
   const [pushLastSync, setPushLastSync] = useState<number | null>(null);
   const [appTheme, setAppTheme] = useState<AppTheme>('light');
   const [syncing, setSyncing] = useState(false);
+  const [clearingTimetable, setClearingTimetable] = useState(false);
   const [studyPrefs, setStudyPrefs] = useState<StudyPreferences | null>(null);
   const [lastAiOptimization, setLastAiOptimization] = useState<
     PlannerAiOptimization | undefined
@@ -253,6 +254,28 @@ export default function SettingsPage() {
     notifyScheduleRefresh();
     await refreshStatus();
     setSyncing(false);
+  };
+
+  const handleClearMyTimetable = async () => {
+    if (
+      !confirm(
+        'Clear your personal routines and reload the official schedule from the server? This removes study blocks and manual entries on your account.'
+      )
+    ) {
+      return;
+    }
+    setClearingTimetable(true);
+    try {
+      await clearPersonalTimetable();
+      const profile = await clearStudyPlannerProfile();
+      if (profile) {
+        setStudyPrefs(profile.preferences);
+        setLastAiOptimization(undefined);
+      }
+      notifyScheduleRefresh();
+    } finally {
+      setClearingTimetable(false);
+    }
   };
 
   const handleRefreshPushSchedule = async () => {
@@ -890,6 +913,17 @@ export default function SettingsPage() {
             <RefreshCw size={16} className={syncing ? 'animate-spin text-accent' : 'text-accent'} />
             <span className="text-body">
               {syncing ? 'Syncing…' : 'Refresh Class Schedule'}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={handleClearMyTimetable}
+            disabled={clearingTimetable}
+            className="flex w-full items-center gap-2 py-3 text-left text-[var(--danger-text)] disabled:opacity-60"
+          >
+            <Trash2 size={16} />
+            <span className="text-body">
+              {clearingTimetable ? 'Clearing…' : 'Clear My Timetable'}
             </span>
           </button>
           <button
