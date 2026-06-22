@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getCohorts } from '@/lib/cohorts';
+import { getAllCohorts } from '@/lib/cohorts';
 
 export async function GET() {
-  return NextResponse.json({ cohorts: getCohorts() });
+  const cohorts = await getAllCohorts();
+  return NextResponse.json({ cohorts });
 }

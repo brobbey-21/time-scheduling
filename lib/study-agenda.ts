@@ -218,16 +218,21 @@ export function buildDayPlaybook(
   const eveningCodes = Array.from(new Set(eveningIntents.map((i) => i.courseCode)));
   const dayCodes = Array.from(new Set(dayIntents.map((i) => i.courseCode)));
 
+  const label = (code: string) => {
+    const intent = intents.find((i) => i.courseCode === code);
+    return intent?.courseName || code;
+  };
+
   let headline = 'Light study day — protect rest time between blocks.';
   if (dayCodes.length > 0 && eveningCodes.length > 0) {
-    headline = `Today: ${dayCodes.slice(0, 2).join(', ')}. Tonight: prep ${eveningCodes.slice(0, 2).join(', ')} for ${tomorrow}.`;
+    headline = `Today: ${dayCodes.slice(0, 2).map(label).join(', ')}. Tonight: prep for ${tomorrow}.`;
   } else if (eveningCodes.length > 0) {
-    headline = `Tonight: prep ${eveningCodes.slice(0, 3).join(', ')} for ${tomorrow}'s classes.`;
+    headline = `Tonight: prep for ${tomorrow}'s classes.`;
   } else if (dayCodes.length > 0) {
-    headline = `Focus on ${dayCodes.slice(0, 3).join(', ')} before today's sessions.`;
+    headline = `Focus on ${dayCodes.slice(0, 3).map(label).join(', ')} before today's sessions.`;
   }
 
-  let tomorrowPreview = `${tomorrow}: no official classes scheduled.`;
+  let tomorrowPreview = `No official classes scheduled for ${tomorrow}.`;
   if (tomorrowClasses.length > 0) {
     const first = tomorrowClasses[0];
     const highCredit = tomorrowClasses.filter(
@@ -235,9 +240,12 @@ export function buildDayPlaybook(
     );
     const critical =
       highCredit.length > 0
-        ? ` Priority: ${highCredit.map((c) => c.courseCode).slice(0, 2).join(', ')} (3 cr, CWA impact).`
+        ? ` Priority: ${highCredit
+            .map((c) => `${c.courseName} (${c.courseCode})`)
+            .slice(0, 2)
+            .join(', ')} — high CWA impact.`
         : '';
-    tomorrowPreview = `${tomorrow} starts with ${first.courseCode} at ${formatTime12(first.startTime)}.${critical}`;
+    tomorrowPreview = `Starts with ${first.courseName} at ${formatTime12(first.startTime)}.${critical}`;
   }
 
   return { day, headline, tomorrowPreview, intents };

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Calendar, GraduationCap, Star, Users, Shield } from 'lucide-react';
+import { Calendar, GraduationCap, Star, Users, Shield, UserPlus } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 
 export default function AdminPage() {
@@ -34,6 +34,12 @@ export default function AdminPage() {
       title: 'Course Credits',
       description: 'Set 1/2/3 credit hours — drives AI study priority',
       icon: GraduationCap,
+    },
+    {
+      href: '/admin/cohorts',
+      title: 'Create Class Group',
+      description: 'Let other programmes or years join with their own timetable',
+      icon: UserPlus,
     },
     {
       href: '/admin/users',

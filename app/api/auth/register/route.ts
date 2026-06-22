@@ -5,7 +5,7 @@ import {
   sessionCookieOptions,
 } from '@/lib/auth';
 import { authErrorResponse } from '@/lib/auth-errors';
-import { isValidCohort } from '@/lib/cohorts';
+import { isValidCohortAsync } from '@/lib/cohorts';
 import { createUser } from '@/lib/user-storage';
 
 export async function POST(request: Request) {
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!cohort || !isValidCohort(cohort)) {
+    if (!cohort || !(await isValidCohortAsync(cohort))) {
       return NextResponse.json(
         { error: 'Please select a valid class group.' },
         { status: 400 }

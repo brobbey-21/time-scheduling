@@ -62,21 +62,53 @@ function parseEnvCohorts(): CohortDefinition[] {
     }));
 }
 
-export function getCohorts(): CohortDefinition[] {
+function mergeCohortLists(...lists: CohortDefinition[][]): CohortDefinition[] {
   const seen = new Set<string>();
   const merged: CohortDefinition[] = [];
 
-  for (const cohort of [MN_3C, ...DEFAULT_EXTRA_COHORTS, ...parseEnvCohorts()]) {
-    if (seen.has(cohort.id)) continue;
-    seen.add(cohort.id);
-    merged.push(cohort);
+  for (const list of lists) {
+    for (const cohort of list) {
+      if (seen.has(cohort.id)) continue;
+      seen.add(cohort.id);
+      merged.push(cohort);
+    }
   }
 
   return merged;
 }
 
+let customCohortCache: CohortDefinition[] = [];
+
+export function setCustomCohortCache(cohorts: CohortDefinition[]): void {
+  customCohortCache = cohorts;
+}
+
+export function getCustomCohortCache(): CohortDefinition[] {
+  return customCohortCache;
+}
+
+export function getBuiltinCohorts(): CohortDefinition[] {
+  return mergeCohortLists([MN_3C], DEFAULT_EXTRA_COHORTS, parseEnvCohorts());
+}
+
+export function getCohorts(): CohortDefinition[] {
+  return mergeCohortLists(getBuiltinCohorts(), customCohortCache);
+}
+
+export async function getAllCohorts(): Promise<CohortDefinition[]> {
+  const { loadCustomCohorts } = await import('./cohort-storage');
+  await loadCustomCohorts();
+  return getCohorts();
+}
+
 export function isValidCohort(cohort: string): boolean {
-  return getCohorts().some((c) => c.id === cohort);
+  if (getCohorts().some((c) => c.id === cohort)) return true;
+  return cohort.length >= 2 && cohort.length <= 32 && /^[\w\s./-]+$/i.test(cohort);
+}
+
+export async function isValidCohortAsync(cohort: string): Promise<boolean> {
+  const all = await getAllCohorts();
+  return all.some((c) => c.id === cohort);
 }
 
 export function getCohortLabel(cohort: string): string {
