@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "generate:vapid": "node scripts/generate-vapid-keys.js",
+    "reset-password": "node scripts/reset-password.js",
     "prepare:deploy": "node scripts/prepare-deploy.js"
   },
   "dependencies": {
