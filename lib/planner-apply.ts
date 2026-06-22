@@ -12,7 +12,22 @@ import {
   stripPlannerBlocksForDay,
 } from './study-planner';
 import { getAllClasses, replaceAllClasses } from './db';
-import type { DayOfWeek, StudyPreferences } from './types';
+import {
+  creditsMapFromRegistry,
+  fetchCourseRegistry,
+} from './course-registry-client';
+import { normalizeCourseCode, setCourseCreditOverrides } from './course-catalog';
+import type { DayOfWeek, PlannerGenerationOptions, StudyPreferences } from './types';
+
+async function applyCreditRegistry(): Promise<void> {
+  const entries = await fetchCourseRegistry();
+  const raw = creditsMapFromRegistry(entries);
+  const map: Record<string, 1 | 2 | 3> = {};
+  for (const [code, credits] of Object.entries(raw)) {
+    map[normalizeCourseCode(code)] = credits;
+  }
+  setCourseCreditOverrides(map);
+}
 
 async function pushPersonalAfterReplace(): Promise<void> {
   const { scheduleClassPush, notifyClassesChanged } = await import('./class-sync');
@@ -21,12 +36,14 @@ async function pushPersonalAfterReplace(): Promise<void> {
 }
 
 export async function applyWeekPlan(
-  prefs: StudyPreferences
+  prefs: StudyPreferences,
+  options?: PlannerGenerationOptions
 ): Promise<number> {
+  await applyCreditRegistry();
   const all = await getAllClasses();
   const shared = getSharedClasses(all);
   const personal = stripPlannerBlocks(getPersonalClasses(all));
-  const generated = generateWeekPlan(shared, prefs);
+  const generated = generateWeekPlan(shared, prefs, options);
   const merged = mergePlannerBlocks(personal, generated);
 
   await replaceAllClasses(composeSchedule(shared, merged));
@@ -49,6 +66,7 @@ export async function applyDayPlan(
   day: DayOfWeek,
   prefs: StudyPreferences
 ): Promise<number> {
+  await applyCreditRegistry();
   const all = await getAllClasses();
   const shared = getSharedClasses(all);
   const personal = stripPlannerBlocksForDay(getPersonalClasses(all), day);

@@ -1,36 +1,59 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Calendar, Star, Users, Shield } from 'lucide-react';
+import { Calendar, GraduationCap, Star, Users, Shield } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 
-const ADMIN_LINKS = [
-  {
-    href: '/admin/schedule',
-    title: 'Class Schedule',
-    description: 'Edit the official MN 3C timetable for everyone',
-    icon: Calendar,
-  },
-  {
-    href: '/admin/users',
-    title: 'Members',
-    description: 'See who joined and assign admins',
-    icon: Users,
-  },
-  {
-    href: '/admin/ratings',
-    title: 'App Ratings',
-    description: 'See how students rated Class Time',
-    icon: Star,
-  },
-];
-
 export default function AdminPage() {
+  const [cohort, setCohort] = useState('your class');
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.user?.cohort) setCohort(data.user.cohort);
+      });
+  }, []);
+
+  const links = [
+    {
+      href: '/admin/schedule',
+      title: 'Class Schedule',
+      description: `Edit the official ${cohort} timetable for your class`,
+      icon: Calendar,
+    },
+    {
+      href: '/admin/schedule/grid',
+      title: 'Week Grid (Desktop)',
+      description: 'Visual timetable editor for PC',
+      icon: Calendar,
+    },
+    {
+      href: '/admin/courses',
+      title: 'Course Credits',
+      description: 'Set 1/2/3 credit hours — drives AI study priority',
+      icon: GraduationCap,
+    },
+    {
+      href: '/admin/users',
+      title: 'Members',
+      description: 'See who joined and assign class admins',
+      icon: Users,
+    },
+    {
+      href: '/admin/ratings',
+      title: 'App Ratings',
+      description: 'See how students rated Class Time',
+      icon: Star,
+    },
+  ];
+
   return (
     <main className="px-5 pt-8 pb-8">
       <PageHeader
         title="Admin"
-        subtitle="Manage MN 3C Class Time"
+        subtitle={`Manage ${cohort} on Class Time`}
         right={
           <div className="rounded-full bg-[var(--accent-light)] p-2.5">
             <Shield size={20} className="text-accent" />
@@ -38,8 +61,13 @@ export default function AdminPage() {
         }
       />
 
+      <p className="text-caption mb-5 text-[var(--text-secondary)]">
+        Promote a trusted classmate to admin so they can help populate the shared
+        timetable. Each class has its own schedule — other groups never see yours.
+      </p>
+
       <div className="space-y-3">
-        {ADMIN_LINKS.map(({ href, title, description, icon: Icon }) => (
+        {links.map(({ href, title, description, icon: Icon }) => (
           <Link
             key={href}
             href={href}

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Bell, ChevronRight, Plus, Sun } from 'lucide-react';
+import DailyStudyGuide from '@/components/DailyStudyGuide';
 import BottomSheet from '@/components/BottomSheet';
 import ClassCard from '@/components/ClassCard';
 import EmptyState from '@/components/EmptyState';
@@ -209,6 +210,8 @@ export default function TodayPage() {
           <NextUpCard cls={nextUp} />
         </section>
       )}
+
+      <DailyStudyGuide />
 
       <section className="mb-6">
         <div className="mb-3 flex items-center justify-between">

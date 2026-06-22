@@ -11,6 +11,7 @@ interface IcsImportButtonProps {
   defaultVisibility?: IcsVisibility;
   allowPublic?: boolean;
   showVisibilityChoice?: boolean;
+  cohortLabel?: string;
 }
 
 export default function IcsImportButton({
@@ -18,6 +19,7 @@ export default function IcsImportButton({
   defaultVisibility = 'private',
   allowPublic = false,
   showVisibilityChoice = false,
+  cohortLabel = 'your class',
 }: IcsImportButtonProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
@@ -29,7 +31,7 @@ export default function IcsImportButton({
 
   const visibilityLabel =
     effectiveVisibility === 'public'
-      ? 'shared MN 3C timetable (everyone)'
+      ? `shared ${cohortLabel} timetable (your class)`
       : 'your private routines (only you)';
 
   const handleFile = async (file: File) => {
@@ -47,7 +49,7 @@ export default function IcsImportButton({
 
       const replaceNote =
         effectiveVisibility === 'public'
-          ? 'This replaces the current shared MN 3C timetable for everyone.'
+          ? `This replaces the current shared ${cohortLabel} timetable for your class.`
           : 'This replaces your manual routines. Planned study blocks are kept.';
 
       const confirmed = confirm(

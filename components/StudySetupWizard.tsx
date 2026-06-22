@@ -58,7 +58,10 @@ export default function StudySetupWizard() {
     planWeekends: false,
     breakMinutes: 15,
     minStudyBlockMinutes: 45,
-    maxStudyBlockMinutes: 90,
+    maxStudyBlockMinutes: 120,
+    maxCourseMinutesPerDay: 120,
+    eveningPrepNextDay: true,
+    prioritizeHighCredit: true,
     plannerVersion: PLANNER_VERSION,
   });
   const [preview, setPreview] = useState<

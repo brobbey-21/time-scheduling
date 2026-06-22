@@ -88,7 +88,12 @@ export default function ClassCard({ cls, showTime = false }: ClassCardProps) {
                     : null}
               </p>
             )}
-            {cls.type !== 'REST' && (cls.lecturer || cls.venue) && (
+            {cls.type === 'STUDY' && cls.notes && (
+              <p className="text-caption mt-2 line-clamp-2 text-[var(--text-secondary)]">
+                {cls.notes}
+              </p>
+            )}
+            {cls.type !== 'REST' && cls.type !== 'STUDY' && (cls.lecturer || cls.venue) && (
               <p className="text-caption mt-1 text-[var(--text-secondary)]">
                 {[cls.lecturer, cls.venue].filter(Boolean).join('  ·  ')}
               </p>

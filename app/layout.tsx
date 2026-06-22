@@ -22,8 +22,8 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: 'Class Time — MN 3C',
-  description: 'MN 3C class schedule and personal routines — UMaT',
+  title: 'Class Time',
+  description: 'Class schedules and personal routines — UMaT',
   manifest: '/manifest.json',
   icons: {
     icon: [

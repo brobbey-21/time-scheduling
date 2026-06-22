@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getSessionUser, isAdmin } from '@/lib/auth-session';
+import { getSessionUser } from '@/lib/auth-session';
+import { canManageCohortSchedule } from '@/lib/auth-permissions';
 import { getSharedSchedule, saveSharedSchedule } from '@/lib/shared-schedule-storage';
 import type { ClassEntry } from '@/lib/types';
 
@@ -9,8 +10,8 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const classes = await getSharedSchedule();
-  return NextResponse.json({ classes });
+  const classes = await getSharedSchedule(user.cohort);
+  return NextResponse.json({ classes, cohort: user.cohort });
 }
 
 export async function PUT(request: Request) {
@@ -18,8 +19,8 @@ export async function PUT(request: Request) {
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  if (!isAdmin(user)) {
-    return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+  if (!canManageCohortSchedule(user, user.cohort)) {
+    return NextResponse.json({ error: 'Admin access required for your class' }, { status: 403 });
   }
 
   const body = (await request.json()) as { classes?: ClassEntry[] };
@@ -29,10 +30,10 @@ export async function PUT(request: Request) {
     updatedAt: Date.now(),
   }));
 
-  const saved = await saveSharedSchedule(classes);
+  const saved = await saveSharedSchedule(user.cohort, classes);
   if (!saved) {
     return NextResponse.json({ error: 'Failed to save' }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, count: classes.length });
+  return NextResponse.json({ ok: true, count: classes.length, cohort: user.cohort });
 }

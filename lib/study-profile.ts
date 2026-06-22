@@ -5,7 +5,7 @@ import type {
 } from './types';
 import { formatTime12, timeToMinutes } from './utils';
 
-export const PLANNER_VERSION = 2;
+export const PLANNER_VERSION = 3;
 
 const MINUTES_PER_DAY = 24 * 60;
 export const MAX_FEEDBACK_EVENTS = 100;
@@ -17,7 +17,10 @@ export const DEFAULT_STUDY_PREFERENCES: StudyPreferences = {
   planWeekends: false,
   breakMinutes: 15,
   minStudyBlockMinutes: 45,
-  maxStudyBlockMinutes: 90,
+  maxStudyBlockMinutes: 120,
+  maxCourseMinutesPerDay: 120,
+  eveningPrepNextDay: true,
+  prioritizeHighCredit: true,
   plannerVersion: PLANNER_VERSION,
 };
 
@@ -37,6 +40,7 @@ export function normalizeStudyProfile(raw: StudyProfile | null): StudyProfile {
       plannerVersion: raw.preferences.plannerVersion ?? PLANNER_VERSION,
     },
     feedback: Array.isArray(raw.feedback) ? raw.feedback : [],
+    lastAiOptimization: raw.lastAiOptimization,
   };
 }
 

@@ -15,6 +15,7 @@ import TypeSelector from './TypeSelector';
 export interface ClassFormData {
   courseCode: string;
   courseName: string;
+  creditHours: 1 | 2 | 3;
   day: DayOfWeek;
   startTime: string;
   endTime: string;
@@ -34,6 +35,7 @@ interface ClassFormProps {
   submitLabel?: string;
   dayHint?: string;
   existingTimes?: string[];
+  showCreditHours?: boolean;
 }
 
 const REMINDER_OPTIONS = [5, 10, 15, 30];
@@ -45,10 +47,12 @@ export default function ClassForm({
   submitLabel = 'Save Class',
   dayHint,
   existingTimes = [],
+  showCreditHours = false,
 }: ClassFormProps) {
   const [form, setForm] = useState<ClassFormData>({
     courseCode: initial?.courseCode ?? '',
     courseName: initial?.courseName ?? '',
+    creditHours: initial?.creditHours ?? 2,
     day: initial?.day ?? 'Monday',
     startTime: initial?.startTime ?? '09:00',
     endTime: initial?.endTime ?? '10:00',
@@ -121,6 +125,28 @@ export default function ClassForm({
           placeholder="Surface Mining Systems"
         />
       </div>
+
+      {showCreditHours && form.type !== 'REST' && (
+        <div>
+          <label className="text-micro mb-1.5 block uppercase text-[var(--text-tertiary)]">
+            Credit hours
+          </label>
+          <select
+            value={form.creditHours}
+            onChange={(e) =>
+              update('creditHours', parseInt(e.target.value, 10) as 1 | 2 | 3)
+            }
+            className="w-full rounded-xl border border-[var(--border)] bg-bg-card px-4 py-3 text-body outline-none focus:ring-2 focus:ring-accent/30"
+          >
+            <option value={1}>1 credit</option>
+            <option value={2}>2 credits</option>
+            <option value={3}>3 credits (high CWA impact)</option>
+          </select>
+          <p className="text-caption mt-1.5 text-[var(--text-tertiary)]">
+            Used by the study planner and AI for time allocation.
+          </p>
+        </div>
+      )}
 
       <div>
         <label className="text-micro mb-2 block uppercase text-[var(--text-tertiary)]">

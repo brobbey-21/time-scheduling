@@ -5,23 +5,40 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import ClassForm, { type ClassFormData } from '@/components/ClassForm';
+import { upsertCourseInRegistry } from '@/lib/admin-course-registry';
 import { fetchSharedSchedule, saveSharedSchedule } from '@/lib/admin-schedule';
-import type { ClassEntry } from '@/lib/types';
+import { normalizeCourseCode } from '@/lib/course-catalog';
+import type { CourseRegistryEntry } from '@/lib/types';
 
 export default function AdminEditPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
-  const [cls, setCls] = useState<ClassEntry | null>(null);
+  const [initialForm, setInitialForm] = useState<Partial<ClassFormData> | null>(null);
 
   useEffect(() => {
-    fetchSharedSchedule().then((classes) => {
-      setCls(classes.find((c) => c.id === id) ?? null);
+    Promise.all([
+      fetchSharedSchedule(),
+      fetch('/api/admin/courses').then((res) => (res.ok ? res.json() : null)),
+    ]).then(([classes, registryData]) => {
+      const found = classes.find((c) => c.id === id);
+      if (!found) {
+        setInitialForm(null);
+        return;
+      }
+      const courses = (registryData?.courses ?? []) as CourseRegistryEntry[];
+      const code = normalizeCourseCode(found.courseCode);
+      const match = courses.find((c) => normalizeCourseCode(c.courseCode) === code);
+      setInitialForm({
+        ...found,
+        meetingUrl: found.meetingUrl ?? '',
+        creditHours: match?.creditHours ?? 2,
+      });
     });
   }, [id]);
 
   const handleSubmit = async (data: ClassFormData) => {
-    const { meetingUrl, ...rest } = data;
+    const { meetingUrl, creditHours: credits, ...rest } = data;
     const shared = await fetchSharedSchedule();
     const updated = shared.map((c) =>
       c.id === id
@@ -35,6 +52,13 @@ export default function AdminEditPage() {
         : c
     );
     await saveSharedSchedule(updated);
+    if (data.type !== 'REST' && data.type !== 'STUDY') {
+      await upsertCourseInRegistry({
+        courseCode: data.courseCode,
+        courseName: data.courseName,
+        creditHours: credits,
+      });
+    }
     router.push('/admin/schedule');
   };
 
@@ -45,7 +69,7 @@ export default function AdminEditPage() {
     router.push('/admin/schedule');
   };
 
-  if (!cls) {
+  if (!initialForm) {
     return (
       <main className="px-5 pt-8">
         <div className="animate-pulse h-96 rounded-2xl bg-[var(--border)]" />
@@ -63,13 +87,14 @@ export default function AdminEditPage() {
       </Link>
       <h1 className="text-display mb-2">Edit Official Class</h1>
       <p className="text-body mb-6 text-[var(--text-secondary)]">
-        Updates apply to all MN 3C students.
+        Updates apply to everyone in your class.
       </p>
       <ClassForm
-        initial={{ ...cls, meetingUrl: cls.meetingUrl ?? '' }}
+        initial={initialForm}
         onSubmit={handleSubmit}
         onDelete={handleDelete}
         submitLabel="Save for Everyone"
+        showCreditHours
       />
     </main>
   );

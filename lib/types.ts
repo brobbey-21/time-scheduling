@@ -43,9 +43,39 @@ export interface StudyPreferences {
   breakMinutes: number;
   minStudyBlockMinutes: number;
   maxStudyBlockMinutes: number;
+  maxCourseMinutesPerDay: number;
+  eveningPrepNextDay: boolean;
+  prioritizeHighCredit: boolean;
   setupCompletedAt?: number;
   lastGeneratedAt?: number;
   plannerVersion: number;
+}
+
+export interface StudyIntent {
+  courseCode: string;
+  courseName: string;
+  minutes: number;
+  prepFor: string;
+  activity: string;
+  priority: number;
+  creditHours?: 1 | 2 | 3;
+  targetDay?: DayOfWeek;
+  targetClassStart?: string;
+  eveningOnly?: boolean;
+}
+
+export interface DailyPlaybook {
+  day: DayOfWeek;
+  headline: string;
+  tomorrowPreview: string;
+  intents: StudyIntent[];
+}
+
+export interface CourseRegistryEntry {
+  courseCode: string;
+  courseName: string;
+  creditHours: 1 | 2 | 3;
+  cwaCritical?: boolean;
 }
 
 export type PlannerFeedbackType =
@@ -66,6 +96,49 @@ export interface PlannerFeedbackEvent {
 export interface StudyProfile {
   preferences: StudyPreferences;
   feedback: PlannerFeedbackEvent[];
+  lastAiOptimization?: PlannerAiOptimization;
+}
+
+export interface PlannerCourseFocus {
+  courseCode: string;
+  priority: number;
+  reason: string;
+  creditHours?: 1 | 2 | 3;
+}
+
+export interface LearningRouteStep {
+  courseCode: string;
+  courseName: string;
+  creditHours: 1 | 2 | 3;
+  prepFor: string;
+  day: DayOfWeek;
+  classStart: string;
+  hoursUntil: number;
+  suggestedFocus: string;
+  priority: number;
+}
+
+export interface PlannerAiOptimization {
+  summary: string;
+  tips: string[];
+  preferences: Partial<StudyPreferences>;
+  dailyStudyMinutes: Partial<Record<DayOfWeek, number>>;
+  courseFocus: PlannerCourseFocus[];
+  learningRoute: LearningRouteStep[];
+  dailyPlaybooks: DailyPlaybook[];
+  weeklyStudyTargets: {
+    courseCode: string;
+    courseName: string;
+    creditHours: 1 | 2 | 3;
+    recommendedMinutes: number;
+  }[];
+  generatedAt: number;
+}
+
+export interface PlannerGenerationOptions {
+  dailyBudgetByDay?: Partial<Record<DayOfWeek, number>>;
+  courseWeights?: Record<string, number>;
+  studyIntentsByDay?: Partial<Record<DayOfWeek, StudyIntent[]>>;
 }
 
 export interface TodoEntry {

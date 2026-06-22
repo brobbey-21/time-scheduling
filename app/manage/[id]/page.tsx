@@ -150,7 +150,7 @@ export default function ClassDetailPage() {
         <div className="mb-4 flex items-center gap-2 rounded-xl bg-[var(--accent-light)] px-4 py-3">
           <Shield size={16} className="shrink-0 text-accent" />
           <p className="text-caption text-[var(--text-secondary)]">
-            Official MN 3C class — same for everyone. Only admin can edit.
+            Official class schedule — same for everyone in your group. Only admin can edit.
           </p>
         </div>
       )}

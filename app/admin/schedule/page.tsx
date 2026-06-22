@@ -13,6 +13,7 @@ import { DAYS } from '@/lib/types';
 
 export default function AdminSchedulePage() {
   const [classes, setClasses] = useState<ClassEntry[]>([]);
+  const [cohort, setCohort] = useState('your class');
   const [loaded, setLoaded] = useState(false);
 
   const load = () => {
@@ -22,6 +23,11 @@ export default function AdminSchedulePage() {
   };
 
   useEffect(() => {
+    fetch('/api/auth/me')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.user?.cohort) setCohort(data.user.cohort);
+      });
     load();
   }, []);
 
@@ -50,7 +56,7 @@ export default function AdminSchedulePage() {
 
       <PageHeader
         title="Class Schedule"
-        subtitle="Official MN 3C timetable — updates for everyone"
+        subtitle={`Official ${cohort} timetable — updates for your class`}
         right={
           <div className="rounded-full bg-[var(--accent-light)] p-2.5">
             <Shield size={20} className="text-accent" />
@@ -58,10 +64,25 @@ export default function AdminSchedulePage() {
         }
       />
 
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <Link
+          href="/admin/schedule/grid"
+          className="hidden rounded-full bg-[var(--accent-light)] px-3 py-1.5 text-micro font-semibold text-accent md:inline-flex"
+        >
+          Grid view (desktop)
+        </Link>
+        <Link
+          href="/admin/courses"
+          className="text-caption font-medium text-accent"
+        >
+          Course credits
+        </Link>
+      </div>
+
       <div className="mb-5 space-y-4">
         <div className="rounded-xl bg-[var(--accent-light)] p-4">
           <p className="text-caption text-[var(--text-secondary)]">
-            Changes here update the shared schedule for all MN 3C students. When importing
+            Changes here update the shared schedule for all {cohort} students. When importing
             .ics, choose <strong>Public</strong> for everyone or <strong>Private</strong> for
             only your account. Personal study routines are not affected by public imports.
           </p>
@@ -71,6 +92,7 @@ export default function AdminSchedulePage() {
           defaultVisibility="public"
           allowPublic
           showVisibilityChoice
+          cohortLabel={cohort}
         />
       </div>
 
@@ -83,7 +105,7 @@ export default function AdminSchedulePage() {
       ) : sorted.length === 0 ? (
         <EmptyState
           title="No classes yet"
-          message="Add the official MN 3C class schedule."
+          message={`Add the official ${cohort} class schedule.`}
         />
       ) : (
         <div className="space-y-3">

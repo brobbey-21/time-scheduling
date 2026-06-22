@@ -6,6 +6,7 @@ const PUBLIC_PREFIXES = [
   '/login',
   '/offline',
   '/api/auth',
+  '/api/cohorts',
   '/api/health',
   '/_next',
   '/icons',

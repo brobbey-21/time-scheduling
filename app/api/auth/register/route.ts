@@ -5,6 +5,7 @@ import {
   sessionCookieOptions,
 } from '@/lib/auth';
 import { authErrorResponse } from '@/lib/auth-errors';
+import { isValidCohort } from '@/lib/cohorts';
 import { createUser } from '@/lib/user-storage';
 
 export async function POST(request: Request) {
@@ -13,12 +14,14 @@ export async function POST(request: Request) {
       email?: string;
       password?: string;
       name?: string;
-      isMn3cStudent?: boolean;
+      cohort?: string;
+      confirmedStudent?: boolean;
     };
 
     const email = body.email?.trim();
     const password = body.password ?? '';
     const name = body.name?.trim();
+    const cohort = body.cohort?.trim();
 
     if (!email || !name || password.length < 6) {
       return NextResponse.json(
@@ -27,15 +30,22 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!body.isMn3cStudent) {
+    if (!cohort || !isValidCohort(cohort)) {
       return NextResponse.json(
-        { error: 'This app is only for MN 3C students. Confirm you are in MN 3C to continue.' },
+        { error: 'Please select a valid class group.' },
+        { status: 400 }
+      );
+    }
+
+    if (!body.confirmedStudent) {
+      return NextResponse.json(
+        { error: `Please confirm you are a student in ${cohort}.` },
         { status: 403 }
       );
     }
 
     const passwordHash = await hashPassword(password);
-    const user = await createUser(email, name, passwordHash, 'MN 3C');
+    const user = await createUser(email, name, passwordHash, cohort);
 
     const token = await createSessionToken({
       id: user.id,

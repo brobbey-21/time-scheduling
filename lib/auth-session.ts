@@ -1,6 +1,7 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
-import type { Cohort, SessionUser, UserRole } from './auth-types';
+import { isValidCohort } from './cohorts';
+import type { Cohort, SessionUser } from './auth-types';
 
 export const SESSION_COOKIE = 'isaac-session';
 const SESSION_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
@@ -45,7 +46,8 @@ export async function verifySessionToken(
       typeof email !== 'string' ||
       typeof name !== 'string' ||
       (role !== 'admin' && role !== 'student') ||
-      cohort !== 'MN 3C'
+      typeof cohort !== 'string' ||
+      !isValidCohort(cohort)
     ) {
       return null;
     }

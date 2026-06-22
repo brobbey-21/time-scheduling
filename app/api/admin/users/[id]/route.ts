@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getFreshSessionUser } from '@/lib/auth-user';
 import { createSessionToken, isAdmin, sessionCookieOptions } from '@/lib/auth-session';
-import { updateUserRole } from '@/lib/user-storage';
+import { canManageUser, isSuperAdmin } from '@/lib/auth-permissions';
+import { findUserById, updateUserRole } from '@/lib/user-storage';
 import type { UserRole } from '@/lib/auth-types';
 
 export async function PATCH(
@@ -21,8 +22,24 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
   }
 
+  const target = await findUserById(params.id);
+  if (!target) {
+    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+  }
+
+  if (!canManageUser(actor, target)) {
+    return NextResponse.json(
+      { error: 'You can only manage members in your own class.' },
+      { status: 403 }
+    );
+  }
+
   try {
-    const updated = await updateUserRole(params.id, body.role);
+    const updated = await updateUserRole(params.id, body.role, {
+      cohort: actor.cohort,
+      email: actor.email,
+      isSuperAdmin: isSuperAdmin(actor),
+    });
     const response = NextResponse.json({ user: updated });
 
     if (actor.id === updated.id) {
@@ -48,9 +65,15 @@ export async function PATCH(
           { status: 403 }
         );
       }
-      if (err.message === 'LAST_ADMIN') {
+      if (err.message === 'LAST_COHORT_ADMIN') {
         return NextResponse.json(
-          { error: 'At least one admin must remain on the platform.' },
+          { error: 'Each class needs at least one admin. Promote someone else first.' },
+          { status: 403 }
+        );
+      }
+      if (err.message === 'COHORT_FORBIDDEN') {
+        return NextResponse.json(
+          { error: 'You can only manage members in your own class.' },
           { status: 403 }
         );
       }

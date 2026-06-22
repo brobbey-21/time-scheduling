@@ -36,13 +36,6 @@ export async function POST(request: Request) {
       );
     }
 
-    if (user.cohort !== 'MN 3C') {
-      return NextResponse.json(
-        { error: 'This app is only for MN 3C students.' },
-        { status: 403 }
-      );
-    }
-
     const token = await createSessionToken({
       id: user.id,
       email: user.email,

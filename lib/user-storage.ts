@@ -3,11 +3,7 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { assertPersistentStorage } from './storage-config';
 import { isUpstashConfigured, upstashCommand } from './upstash';
-import {
-  getBootstrapAdminEmails,
-  isPrimaryOwner,
-  resolveUserRole,
-} from './admin-users';
+import { getBootstrapAdminEmails, isPrimaryOwner, resolveUserRole } from './admin-users';
 import type { Cohort, UserRecord, UserRole } from './auth-types';
 
 export interface PublicUser {
@@ -19,7 +15,7 @@ export interface PublicUser {
   createdAt: number;
 }
 
-export { resolveUserRole };
+export { resolveUserRole } from './admin-users';
 
 const DATA_FILE = path.join(process.cwd(), '.data', 'users.json');
 const REDIS_KEY = 'auth:users';
@@ -101,10 +97,11 @@ export async function ensureBootstrapAdmins(): Promise<void> {
   if (changed) await saveStore(store);
 }
 
-export async function listPublicUsers(): Promise<PublicUser[]> {
+export async function listPublicUsers(cohortFilter?: string): Promise<PublicUser[]> {
   await ensureBootstrapAdmins();
   const store = await getStore();
   return store.users
+    .filter((u) => !cohortFilter || u.cohort === cohortFilter)
     .map(({ id, email, name, role, cohort, createdAt }) => ({
       id,
       email,
@@ -116,14 +113,15 @@ export async function listPublicUsers(): Promise<PublicUser[]> {
     .sort((a, b) => b.createdAt - a.createdAt);
 }
 
-export async function countAdmins(): Promise<number> {
+export async function countAdminsInCohort(cohort: string): Promise<number> {
   const store = await getStore();
-  return store.users.filter((u) => u.role === 'admin').length;
+  return store.users.filter((u) => u.role === 'admin' && u.cohort === cohort).length;
 }
 
 export async function updateUserRole(
   userId: string,
-  role: UserRole
+  role: UserRole,
+  actor?: { cohort: string; email: string; isSuperAdmin: boolean }
 ): Promise<PublicUser> {
   const store = await getStore();
   const index = store.users.findIndex((u) => u.id === userId);
@@ -131,13 +129,19 @@ export async function updateUserRole(
 
   const target = store.users[index];
 
+  if (actor && !actor.isSuperAdmin && actor.cohort !== target.cohort) {
+    throw new Error('COHORT_FORBIDDEN');
+  }
+
   if (role === 'student' && isPrimaryOwner(target.email)) {
     throw new Error('CANNOT_DEMOTE_OWNER');
   }
 
   if (role === 'student' && target.role === 'admin') {
-    const admins = store.users.filter((u) => u.role === 'admin').length;
-    if (admins <= 1) throw new Error('LAST_ADMIN');
+    const cohortAdmins = store.users.filter(
+      (u) => u.role === 'admin' && u.cohort === target.cohort
+    ).length;
+    if (cohortAdmins <= 1) throw new Error('LAST_COHORT_ADMIN');
   }
 
   store.users[index] = { ...target, role };

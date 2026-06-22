@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import ClassForm, { type ClassFormData } from '@/components/ClassForm';
+import { upsertCourseInRegistry } from '@/lib/admin-course-registry';
 import { fetchSharedSchedule, saveSharedSchedule } from '@/lib/admin-schedule';
 import { DAY_SHORT, type DayOfWeek } from '@/lib/types';
 import { DAYS } from '@/lib/types';
@@ -16,10 +17,16 @@ function parseDayParam(value: string | null): DayOfWeek | null {
   return DAYS.includes(value as DayOfWeek) ? (value as DayOfWeek) : null;
 }
 
+function parseStartParam(value: string | null): string | null {
+  if (!value || !/^\d{2}:\d{2}$/.test(value)) return null;
+  return value;
+}
+
 function AdminAddContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const dayParam = parseDayParam(searchParams.get('day'));
+  const startParam = parseStartParam(searchParams.get('start'));
   const [existingTimes, setExistingTimes] = useState<string[]>([]);
 
   useEffect(() => {
@@ -34,7 +41,7 @@ function AdminAddContent() {
   }, [dayParam]);
 
   const handleSubmit = async (data: ClassFormData) => {
-    const { meetingUrl, ...rest } = data;
+    const { meetingUrl, creditHours, ...rest } = data;
     const shared = await fetchSharedSchedule();
     const now = Date.now();
     const entry = {
@@ -46,6 +53,13 @@ function AdminAddContent() {
       updatedAt: now,
     };
     await saveSharedSchedule([...shared, entry]);
+    if (data.type !== 'REST' && data.type !== 'STUDY') {
+      await upsertCourseInRegistry({
+        courseCode: data.courseCode,
+        courseName: data.courseName,
+        creditHours,
+      });
+    }
     router.push('/admin/schedule');
   };
 
@@ -59,13 +73,17 @@ function AdminAddContent() {
       </Link>
       <h1 className="text-display mb-2">Add Official Class</h1>
       <p className="text-body mb-6 text-[var(--text-secondary)]">
-        This will appear on every MN 3C student&apos;s timetable.
+        This will appear on every student in your class timetable.
       </p>
       <ClassForm
-        initial={dayParam ? { day: dayParam } : undefined}
+        initial={{
+          ...(dayParam ? { day: dayParam } : {}),
+          ...(startParam ? { startTime: startParam } : {}),
+        }}
         onSubmit={handleSubmit}
         submitLabel="Add to Schedule"
         existingTimes={existingTimes}
+        showCreditHours
       />
     </main>
   );

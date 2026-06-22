@@ -31,8 +31,9 @@ import {
   fetchStudyProfile,
   saveStudyPreferences,
 } from '@/lib/study-profile-sync';
-import type { StudyPreferences } from '@/lib/types';
+import type { PlannerAiOptimization, StudyPreferences } from '@/lib/types';
 import AppRatingCard from '@/components/AppRatingCard';
+import PlannerAiOptimizeCard from '@/components/PlannerAiOptimizeCard';
 import PageHeader from '@/components/PageHeader';
 import {
   clearAllTodos,
@@ -84,6 +85,9 @@ export default function SettingsPage() {
   const [appTheme, setAppTheme] = useState<AppTheme>('light');
   const [syncing, setSyncing] = useState(false);
   const [studyPrefs, setStudyPrefs] = useState<StudyPreferences | null>(null);
+  const [lastAiOptimization, setLastAiOptimization] = useState<
+    PlannerAiOptimization | undefined
+  >(undefined);
   const [regeneratingPlan, setRegeneratingPlan] = useState(false);
   const [savingStudyPrefs, setSavingStudyPrefs] = useState(false);
   const pushConfigured = isPushConfigured();
@@ -123,7 +127,10 @@ export default function SettingsPage() {
     getSetting('endOfDayReminderEnabled', true).then(setEndOfDayEnabled);
     getSetting('endOfDayReminderTime', '21:00').then(setEndOfDayTime);
     loadTheme().then(setAppTheme);
-    fetchStudyProfile().then((p) => setStudyPrefs(p.preferences));
+    fetchStudyProfile().then((p) => {
+      setStudyPrefs(p.preferences);
+      setLastAiOptimization(p.lastAiOptimization);
+    });
     refreshStatus();
 
     const onChange = () => refreshStatus();
@@ -562,6 +569,18 @@ export default function SettingsPage() {
             Auto-build study and rest blocks around your official class schedule.
           </p>
 
+          {studyPrefs?.setupCompletedAt && (
+            <PlannerAiOptimizeCard
+              studyPrefs={studyPrefs}
+              lastOptimization={lastAiOptimization}
+              onApplied={(prefs, optimization) => {
+                setStudyPrefs(prefs);
+                setLastAiOptimization(optimization);
+                notifyScheduleRefresh();
+              }}
+            />
+          )}
+
           {studyPrefs ? (
             <>
               <div>
@@ -641,6 +660,98 @@ export default function SettingsPage() {
                   <span
                     className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
                       studyPrefs.planWeekends ? 'left-[22px]' : 'left-0.5'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between border-t border-[var(--border)] pt-4">
+                <div>
+                  <p className="text-body">Max per course / day</p>
+                  <p className="text-caption text-[var(--text-secondary)]">
+                    Cap study time on one course (default 2h)
+                  </p>
+                </div>
+                <select
+                  value={studyPrefs.maxCourseMinutesPerDay ?? 120}
+                  onChange={(e) =>
+                    setStudyPrefs((p) =>
+                      p
+                        ? {
+                            ...p,
+                            maxCourseMinutesPerDay: parseInt(e.target.value, 10),
+                          }
+                        : p
+                    )
+                  }
+                  className="text-caption rounded-lg border border-[var(--border)] bg-bg-base px-2 py-1"
+                >
+                  {[60, 90, 120, 150].map((m) => (
+                    <option key={m} value={m}>
+                      {m / 60}h
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-body">Evening = tomorrow prep</p>
+                  <p className="text-caption text-[var(--text-secondary)]">
+                    After 5pm, study for next day&apos;s classes
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={studyPrefs.eveningPrepNextDay ?? true}
+                  onClick={() =>
+                    setStudyPrefs((p) =>
+                      p
+                        ? { ...p, eveningPrepNextDay: !p.eveningPrepNextDay }
+                        : p
+                    )
+                  }
+                  className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+                    (studyPrefs.eveningPrepNextDay ?? true)
+                      ? 'bg-accent'
+                      : 'bg-[var(--border)]'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                      (studyPrefs.eveningPrepNextDay ?? true)
+                        ? 'left-[22px]'
+                        : 'left-0.5'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-body">Prioritize 3-credit courses</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={studyPrefs.prioritizeHighCredit ?? true}
+                  onClick={() =>
+                    setStudyPrefs((p) =>
+                      p
+                        ? { ...p, prioritizeHighCredit: !p.prioritizeHighCredit }
+                        : p
+                    )
+                  }
+                  className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+                    (studyPrefs.prioritizeHighCredit ?? true)
+                      ? 'bg-accent'
+                      : 'bg-[var(--border)]'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                      (studyPrefs.prioritizeHighCredit ?? true)
+                        ? 'left-[22px]'
+                        : 'left-0.5'
                     }`}
                   />
                 </button>
@@ -767,7 +878,7 @@ export default function SettingsPage() {
             <span className="text-caption text-[var(--text-tertiary)]">1.0.0</span>
           </div>
           <p className="text-caption text-[var(--text-secondary)]">
-            MN 3C · UMaT Semester 2, 2026
+            {user?.cohort ?? 'UMaT'} · Semester 2, 2026
           </p>
         </div>
       </section>

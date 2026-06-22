@@ -1,26 +1,51 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { GraduationCap, Loader2, ShieldCheck } from 'lucide-react';
+
+interface CohortOption {
+  id: string;
+  label: string;
+  description: string;
+}
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [cohorts, setCohorts] = useState<CohortOption[]>([]);
+  const [cohort, setCohort] = useState('MN 3C');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isMn3cStudent, setIsMn3cStudent] = useState(false);
+  const [confirmedStudent, setConfirmedStudent] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/cohorts')
+      .then((res) => res.json())
+      .then((data: { cohorts?: CohortOption[] }) => {
+        const list = data.cohorts ?? [];
+        setCohorts(list);
+        if (list.length > 0 && !list.some((c) => c.id === cohort)) {
+          setCohort(list[0].id);
+        }
+      })
+      .catch(() => {
+        setCohorts([{ id: 'MN 3C', label: 'MN 3C', description: 'Mining Engineering — Year 3' }]);
+      });
+  }, [cohort]);
+
+  const selectedCohort = cohorts.find((c) => c.id === cohort);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (mode === 'register' && !isMn3cStudent) {
-      setError('Please confirm you are an MN 3C student to create an account.');
+    if (mode === 'register' && !confirmedStudent) {
+      setError(`Please confirm you are a student in ${cohort}.`);
       return;
     }
 
@@ -31,7 +56,7 @@ function LoginForm() {
       const body =
         mode === 'login'
           ? { email, password }
-          : { email, password, name, isMn3cStudent };
+          : { email, password, name, cohort, confirmedStudent };
 
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -64,11 +89,11 @@ function LoginForm() {
         </div>
         <h1 className="text-display">Class Time</h1>
         <p className="text-body mt-2 text-[var(--text-secondary)]">
-          MN 3C class schedule at UMaT
+          Class schedules at UMaT — one app, many groups
         </p>
         <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-light)] px-3 py-1 text-micro font-semibold uppercase tracking-wide text-accent">
           <ShieldCheck size={12} />
-          MN 3C Students Only
+          Students Only
         </span>
       </div>
 
@@ -105,18 +130,42 @@ function LoginForm() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {mode === 'register' && (
-          <div>
-            <label className="text-micro mb-1.5 block uppercase text-[var(--text-tertiary)]">
-              Full Name
-            </label>
-            <input
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-xl border border-[var(--border)] bg-bg-card px-4 py-3 text-body outline-none focus:ring-2 focus:ring-accent/30"
-              placeholder="Your full name"
-            />
-          </div>
+          <>
+            <div>
+              <label className="text-micro mb-1.5 block uppercase text-[var(--text-tertiary)]">
+                Full Name
+              </label>
+              <input
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full rounded-xl border border-[var(--border)] bg-bg-card px-4 py-3 text-body outline-none focus:ring-2 focus:ring-accent/30"
+                placeholder="Your full name"
+              />
+            </div>
+
+            <div>
+              <label className="text-micro mb-1.5 block uppercase text-[var(--text-tertiary)]">
+                Your Class
+              </label>
+              <select
+                required
+                value={cohort}
+                onChange={(e) => {
+                  setCohort(e.target.value);
+                  setConfirmedStudent(false);
+                }}
+                className="w-full rounded-xl border border-[var(--border)] bg-bg-card px-4 py-3 text-body outline-none focus:ring-2 focus:ring-accent/30"
+              >
+                {cohorts.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label}
+                    {c.description ? ` — ${c.description}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </>
         )}
 
         <div>
@@ -154,13 +203,16 @@ function LoginForm() {
           <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[var(--border)] bg-bg-card p-4">
             <input
               type="checkbox"
-              checked={isMn3cStudent}
-              onChange={(e) => setIsMn3cStudent(e.target.checked)}
+              checked={confirmedStudent}
+              onChange={(e) => setConfirmedStudent(e.target.checked)}
               className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--accent)]"
             />
             <span className="text-body text-[var(--text-secondary)]">
-              I confirm I am an <strong className="text-[var(--text-primary)]">MN 3C</strong> student
-              at UMaT. This app is only for our class.
+              I confirm I am a student in{' '}
+              <strong className="text-[var(--text-primary)]">
+                {selectedCohort?.label ?? cohort}
+              </strong>
+              . Each class has its own shared timetable.
             </span>
           </label>
         )}
@@ -182,7 +234,8 @@ function LoginForm() {
       </form>
 
       <p className="text-caption mt-8 text-center text-[var(--text-tertiary)]">
-        Everyone sees the same class schedule. Your personal routines stay private to your account.
+        Everyone in your class sees the same official schedule. Personal routines stay
+        private. Class admins populate the shared timetable.
       </p>
     </main>
   );

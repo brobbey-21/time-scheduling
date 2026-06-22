@@ -1,15 +1,32 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { cohortHasSeedSchedule, cohortStorageSlug } from './cohorts';
 import type { ClassEntry } from './types';
 import { OFFICIAL_CLASSES } from './timetable.config';
 import { assertPersistentStorage } from './storage-config';
 import { isUpstashConfigured, upstashCommand } from './upstash';
 
-const DATA_FILE = path.join(process.cwd(), '.data', 'shared', 'mn3c-schedule.json');
-const REDIS_KEY = 'shared:schedule:mn3c';
+const LEGACY_MN3C_SLUG = 'mn3c';
 
-async function readRedis(): Promise<ClassEntry[] | null> {
-  const result = (await upstashCommand(['GET', REDIS_KEY])) as {
+function dataFile(cohort: string): string {
+  const slug = cohortStorageSlug(cohort);
+  return path.join(process.cwd(), '.data', 'shared', `${slug}-schedule.json`);
+}
+
+function redisKey(cohort: string): string {
+  return `shared:schedule:${cohortStorageSlug(cohort)}`;
+}
+
+function legacyRedisKey(): string {
+  return `shared:schedule:${LEGACY_MN3C_SLUG}`;
+}
+
+function legacyDataFile(): string {
+  return path.join(process.cwd(), '.data', 'shared', `${LEGACY_MN3C_SLUG}-schedule.json`);
+}
+
+async function readRedis(key: string): Promise<ClassEntry[] | null> {
+  const result = (await upstashCommand(['GET', key])) as {
     result?: string | null;
   } | null;
   if (!result?.result) return null;
@@ -20,23 +37,23 @@ async function readRedis(): Promise<ClassEntry[] | null> {
   }
 }
 
-async function writeRedis(classes: ClassEntry[]): Promise<boolean> {
-  const result = await upstashCommand(['SET', REDIS_KEY, JSON.stringify(classes)]);
+async function writeRedis(key: string, classes: ClassEntry[]): Promise<boolean> {
+  const result = await upstashCommand(['SET', key, JSON.stringify(classes)]);
   return result !== null;
 }
 
-async function readFile(): Promise<ClassEntry[] | null> {
+async function readFile(file: string): Promise<ClassEntry[] | null> {
   try {
-    const raw = await fs.readFile(DATA_FILE, 'utf8');
+    const raw = await fs.readFile(file, 'utf8');
     return JSON.parse(raw) as ClassEntry[];
   } catch {
     return null;
   }
 }
 
-async function writeFile(classes: ClassEntry[]): Promise<void> {
-  await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
-  await fs.writeFile(DATA_FILE, JSON.stringify(classes, null, 2), 'utf8');
+async function writeFile(file: string, classes: ClassEntry[]): Promise<void> {
+  await fs.mkdir(path.dirname(file), { recursive: true });
+  await fs.writeFile(file, JSON.stringify(classes, null, 2), 'utf8');
 }
 
 function seedOfficialClasses(): ClassEntry[] {
@@ -49,25 +66,53 @@ function seedOfficialClasses(): ClassEntry[] {
   }));
 }
 
-export async function getSharedSchedule(): Promise<ClassEntry[]> {
-  const redis = await readRedis();
+async function readStoredSchedule(cohort: string): Promise<ClassEntry[] | null> {
+  const key = redisKey(cohort);
+  const file = dataFile(cohort);
+
+  const redis = await readRedis(key);
   if (redis && redis.length > 0) return redis;
 
-  const file = await readFile();
-  if (file && file.length > 0) return file;
+  const fromFile = await readFile(file);
+  if (fromFile && fromFile.length > 0) return fromFile;
 
-  const seeded = seedOfficialClasses();
-  await saveSharedSchedule(seeded);
-  return seeded;
+  if (cohort === 'MN 3C') {
+    const legacyRedis = await readRedis(legacyRedisKey());
+    if (legacyRedis && legacyRedis.length > 0) return legacyRedis;
+
+    const legacyFile = await readFile(legacyDataFile());
+    if (legacyFile && legacyFile.length > 0) return legacyFile;
+  }
+
+  return null;
 }
 
-export async function saveSharedSchedule(classes: ClassEntry[]): Promise<boolean> {
+export async function getSharedSchedule(cohort: string): Promise<ClassEntry[]> {
+  const stored = await readStoredSchedule(cohort);
+  if (stored && stored.length > 0) return stored;
+
+  if (cohortHasSeedSchedule(cohort)) {
+    const seeded = seedOfficialClasses();
+    await saveSharedSchedule(cohort, seeded);
+    return seeded;
+  }
+
+  return [];
+}
+
+export async function saveSharedSchedule(
+  cohort: string,
+  classes: ClassEntry[]
+): Promise<boolean> {
   assertPersistentStorage();
   const payload = classes.map((c) => ({ ...c, isDefault: true }));
+  const key = redisKey(cohort);
+  const file = dataFile(cohort);
+
   if (isUpstashConfigured()) {
-    const ok = await writeRedis(payload);
+    const ok = await writeRedis(key, payload);
     if (ok) return true;
   }
-  await writeFile(payload);
+  await writeFile(file, payload);
   return true;
 }

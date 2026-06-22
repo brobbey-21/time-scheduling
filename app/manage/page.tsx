@@ -19,6 +19,7 @@ type RoutineFilter = 'all' | 'planned' | 'manual';
 interface SessionUser {
   name: string;
   role: 'admin' | 'student';
+  cohort: string;
 }
 
 function ManagePageContent() {
@@ -105,7 +106,7 @@ function ManagePageContent() {
     <main className="px-5 pt-8 pb-8">
       <PageHeader
         title="Classes"
-        subtitle="Shared MN 3C schedule + your private routines"
+        subtitle={`Shared ${user?.cohort ?? 'class'} schedule + your private routines`}
         right={
           <div className="flex items-center gap-3">
             <Link
@@ -138,7 +139,7 @@ function ManagePageContent() {
         {(
           [
             { id: 'routines' as Tab, label: 'My Routines' },
-            { id: 'schedule' as Tab, label: 'MN 3C Schedule' },
+            { id: 'schedule' as Tab, label: `${user?.cohort ?? 'Class'} Schedule` },
           ] as const
         ).map(({ id, label }) => (
           <button
@@ -159,7 +160,7 @@ function ManagePageContent() {
 
       {tab === 'schedule' && (
         <p className="text-caption mb-4 text-[var(--text-secondary)]">
-          Same for everyone in MN 3C.
+          Same for everyone in {user?.cohort ?? 'your class'}.
           {user?.role === 'admin' ? (
             <>
               {' '}

@@ -19,6 +19,8 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<PublicUser[]>([]);
   const [total, setTotal] = useState(0);
   const [adminCount, setAdminCount] = useState(0);
+  const [cohortLabel, setCohortLabel] = useState('your class');
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -36,10 +38,14 @@ export default function AdminUsersPage() {
         users: PublicUser[];
         total: number;
         admins: number;
+        cohort?: string;
+        isSuperAdmin?: boolean;
       };
       setUsers(data.users);
       setTotal(data.total);
       setAdminCount(data.admins);
+      if (data.cohort) setCohortLabel(data.cohort);
+      setIsSuperAdmin(Boolean(data.isSuperAdmin));
     } catch {
       setError('Network error loading users.');
     } finally {
@@ -97,7 +103,11 @@ export default function AdminUsersPage() {
 
       <PageHeader
         title="Members"
-        subtitle={`${total} MN 3C students joined`}
+        subtitle={
+          isSuperAdmin
+            ? `${total} students across all classes`
+            : `${total} ${cohortLabel} students joined`
+        }
         right={
           <div className="rounded-full bg-[var(--accent-light)] p-2.5">
             <Users size={20} className="text-accent" />
@@ -117,8 +127,9 @@ export default function AdminUsersPage() {
       </div>
 
       <p className="text-caption mb-4 text-[var(--text-secondary)]">
-        Admins can update the shared class schedule. Assign trusted classmates to help
-        manage the timetable.
+        Admins can update the shared class schedule for their group. Assign a trusted
+        classmate to help populate the timetable.
+        {isSuperAdmin && ' As platform owner, you see every class.'}
       </p>
 
       {error && (

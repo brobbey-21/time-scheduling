@@ -19,7 +19,7 @@ const STEPS = [
   {
     icon: GraduationCap,
     title: 'Welcome to Class Time',
-    body: 'Built for MN 3C at UMaT. Everyone shares the same official class schedule — your personal routines stay private.',
+    body: 'Built for UMaT class groups. Everyone in your class shares the same official schedule — personal routines stay private.',
   },
   {
     icon: Calendar,

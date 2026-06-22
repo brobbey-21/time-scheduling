@@ -1,5 +1,6 @@
 export type UserRole = 'admin' | 'student';
-export type Cohort = 'MN 3C';
+/** Class group id — see lib/cohorts.ts */
+export type Cohort = string;
 
 export interface UserRecord {
   id: string;
