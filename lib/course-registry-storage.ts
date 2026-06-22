@@ -128,6 +128,31 @@ export async function saveCourseRegistry(
   return true;
 }
 
+export function registryFromSchedule(schedule: ClassEntry[]): CourseRegistryEntry[] {
+  const map = new Map<string, CourseRegistryEntry>();
+
+  for (const cls of schedule) {
+    if (!cls.isDefault || cls.type === 'REST' || cls.type === 'STUDY') continue;
+    const code = normalizeCourseCode(cls.courseCode);
+    if (code === 'REST' || code === 'STUDY' || map.has(code)) continue;
+
+    const credits = (MN3C_COURSE_CREDITS[cls.courseCode] ??
+      MN3C_COURSE_CREDITS[code] ??
+      2) as 1 | 2 | 3;
+
+    map.set(code, {
+      courseCode: code,
+      courseName: cls.courseName,
+      creditHours: credits,
+      cwaCritical: credits === 3,
+    });
+  }
+
+  return Array.from(map.values()).sort((a, b) =>
+    a.courseCode.localeCompare(b.courseCode)
+  );
+}
+
 export function mergeRegistryFromSchedule(
   registry: CourseRegistryEntry[],
   schedule: ClassEntry[]

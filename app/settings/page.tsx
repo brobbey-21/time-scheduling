@@ -18,7 +18,7 @@ import {
   Trash2,
   User,
 } from 'lucide-react';
-import { applyWeekPlan } from '@/lib/planner-apply';
+import { applyWeekPlan, clearPlannerBlocksFromTimetable } from '@/lib/planner-apply';
 import { syncAllClasses } from '@/lib/class-sync';
 import {
   formatSleepScheduleLabel,
@@ -28,6 +28,7 @@ import {
   dispatchOpenStudySetup,
 } from '@/lib/study-setup-events';
 import {
+  clearStudyPlannerProfile,
   fetchStudyProfile,
   saveStudyPreferences,
 } from '@/lib/study-profile-sync';
@@ -89,6 +90,7 @@ export default function SettingsPage() {
     PlannerAiOptimization | undefined
   >(undefined);
   const [regeneratingPlan, setRegeneratingPlan] = useState(false);
+  const [clearingPlanner, setClearingPlanner] = useState(false);
   const [savingStudyPrefs, setSavingStudyPrefs] = useState(false);
   const pushConfigured = isPushConfigured();
 
@@ -220,6 +222,28 @@ export default function SettingsPage() {
       setStudyPrefs(profile.preferences);
     } finally {
       setRegeneratingPlan(false);
+    }
+  };
+
+  const handleClearPlanner = async () => {
+    if (
+      !confirm(
+        'Clear AI suggestions and all planner-generated study blocks? Your wake/sleep preferences and manual routines stay.'
+      )
+    ) {
+      return;
+    }
+    setClearingPlanner(true);
+    try {
+      await clearPlannerBlocksFromTimetable();
+      const profile = await clearStudyPlannerProfile();
+      if (profile) {
+        setStudyPrefs(profile.preferences);
+        setLastAiOptimization(undefined);
+      }
+      notifyScheduleRefresh();
+    } finally {
+      setClearingPlanner(false);
     }
   };
 
@@ -802,6 +826,18 @@ export default function SettingsPage() {
             >
               <RefreshCw size={18} className={regeneratingPlan ? 'animate-spin' : ''} />
               {regeneratingPlan ? 'Regenerating…' : 'Regenerate full week'}
+            </button>
+          )}
+
+          {(studyPrefs?.setupCompletedAt || lastAiOptimization) && (
+            <button
+              type="button"
+              onClick={handleClearPlanner}
+              disabled={clearingPlanner}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border)] py-3 text-body font-semibold text-[var(--danger-text)] disabled:opacity-60"
+            >
+              <Trash2 size={18} />
+              {clearingPlanner ? 'Clearing…' : 'Clear AI & Smart Planner'}
             </button>
           )}
         </div>

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth-session';
 import {
   appendFeedback,
+  clearPlannerProfile,
   createDefaultStudyProfile,
   normalizeStudyProfile,
 } from '@/lib/study-profile';
@@ -31,12 +32,15 @@ export async function PUT(request: Request) {
   const body = (await request.json()) as {
     preferences?: Partial<StudyPreferences>;
     feedback?: Omit<PlannerFeedbackEvent, 'at'>[];
+    clearPlanner?: boolean;
   };
 
   const stored = await getUserStudyProfile(user.id);
   let profile = stored ? normalizeStudyProfile(stored) : createDefaultStudyProfile();
 
-  if (body.preferences) {
+  if (body.clearPlanner) {
+    profile = clearPlannerProfile(profile);
+  } else if (body.preferences) {
     profile = {
       ...profile,
       preferences: {

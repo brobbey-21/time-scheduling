@@ -8,11 +8,17 @@ export async function fetchSharedSchedule(): Promise<ClassEntry[]> {
   return data.classes ?? [];
 }
 
-export async function saveSharedSchedule(classes: ClassEntry[]): Promise<void> {
+export async function saveSharedSchedule(
+  classes: ClassEntry[],
+  options?: { replaceRegistry?: boolean }
+): Promise<void> {
   const res = await fetch('/api/schedule/shared', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ classes }),
+    body: JSON.stringify({
+      classes,
+      replaceRegistry: options?.replaceRegistry === true,
+    }),
   });
   if (!res.ok) {
     const data = (await res.json()) as { error?: string };

@@ -44,6 +44,20 @@ export function normalizeStudyProfile(raw: StudyProfile | null): StudyProfile {
   };
 }
 
+/** Remove AI optimization, planner setup state, and feedback while keeping user prefs. */
+export function clearPlannerProfile(profile: StudyProfile): StudyProfile {
+  const { setupCompletedAt: _setup, lastGeneratedAt: _generated, ...prefs } =
+    profile.preferences;
+  return {
+    preferences: {
+      ...DEFAULT_STUDY_PREFERENCES,
+      ...prefs,
+      plannerVersion: PLANNER_VERSION,
+    },
+    feedback: [],
+  };
+}
+
 export function appendFeedback(
   profile: StudyProfile,
   event: Omit<PlannerFeedbackEvent, 'at'> & { at?: number }

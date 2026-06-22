@@ -1,5 +1,6 @@
 import {
   appendFeedback,
+  clearPlannerProfile,
   createDefaultStudyProfile,
   normalizeStudyProfile,
 } from './study-profile';
@@ -29,6 +30,25 @@ export async function fetchStudyProfile(): Promise<StudyProfile> {
     return profile;
   } catch {
     return cachedProfile ?? createDefaultStudyProfile();
+  }
+}
+
+export async function clearStudyPlannerProfile(): Promise<StudyProfile | null> {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const res = await fetch('/api/study-profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clearPlanner: true }),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { profile?: StudyProfile };
+    const profile = normalizeStudyProfile(data.profile ?? null);
+    cachedProfile = profile;
+    return profile;
+  } catch {
+    return null;
   }
 }
 

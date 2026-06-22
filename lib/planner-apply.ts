@@ -62,6 +62,22 @@ export async function applyWeekPlan(
   return generated.length;
 }
 
+export async function clearPlannerBlocksFromTimetable(): Promise<number> {
+  const all = await getAllClasses();
+  const shared = getSharedClasses(all);
+  const personalBefore = getPersonalClasses(all);
+  const personal = stripPlannerBlocks(personalBefore);
+  const removed = personalBefore.length - personal.length;
+
+  await replaceAllClasses(composeSchedule(shared, personal));
+  await pushPersonalAfterReplace();
+
+  const { pushPersonalClasses } = await import('./class-sync');
+  await pushPersonalClasses(personal);
+
+  return removed;
+}
+
 export async function applyDayPlan(
   day: DayOfWeek,
   prefs: StudyPreferences

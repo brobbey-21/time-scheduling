@@ -25,7 +25,7 @@ export async function importIcsSchedule(
   }));
 
   if (visibility === 'public') {
-    await saveSharedSchedule(entries);
+    await saveSharedSchedule(entries, { replaceRegistry: true });
     return;
   }
 

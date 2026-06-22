@@ -49,7 +49,7 @@ export default function IcsImportButton({
 
       const replaceNote =
         effectiveVisibility === 'public'
-          ? `This replaces the current shared ${cohortLabel} timetable for your class.`
+          ? `This fully replaces the current shared ${cohortLabel} timetable and course list for your class.`
           : 'This replaces your manual routines. Planned study blocks are kept.';
 
       const confirmed = confirm(
