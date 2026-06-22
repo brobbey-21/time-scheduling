@@ -303,18 +303,29 @@ export default function SettingsPage() {
                 </Link>
               </div>
             )}
-            <button
-              type="button"
-              onClick={handleLogout}
-              disabled={loggingOut}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border)] py-3 text-body font-semibold text-[var(--danger-text)]"
-            >
-              <LogOut size={18} />
-              {loggingOut ? 'Signing out…' : 'Sign Out'}
-            </button>
           </div>
         </section>
       )}
+
+      <section className="mb-6">
+        <p className="text-micro mb-3 uppercase text-[var(--text-tertiary)]">
+          Session
+        </p>
+        <div className="card">
+          <button
+            type="button"
+            onClick={handleLogout}
+            disabled={loggingOut}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border)] py-3 text-body font-semibold text-[var(--danger-text)]"
+          >
+            <LogOut size={18} />
+            {loggingOut ? 'Signing out…' : 'Sign Out'}
+          </button>
+          <p className="text-caption mt-3 text-center text-[var(--text-tertiary)]">
+            Switch account or use a shared device safely
+          </p>
+        </div>
+      </section>
 
       <section className="mb-6">
         <p className="text-micro mb-3 uppercase text-[var(--text-tertiary)]">

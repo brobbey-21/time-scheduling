@@ -2,14 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Calendar, CheckSquare, Home, Settings } from 'lucide-react';
+import { Calendar, CheckSquare, Home, Layers, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const NAV_ITEMS = [
   { href: '/', label: 'Today', icon: Home },
   { href: '/timetable', label: 'Timetable', icon: Calendar },
   { href: '/todos', label: 'Todos', icon: CheckSquare },
-  { href: '/manage?tab=routines', label: 'Routines', icon: Settings },
+  { href: '/manage?tab=routines', label: 'Routines', icon: Layers },
+  { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export default function BottomNav() {
@@ -31,7 +32,9 @@ export default function BottomNav() {
               ? pathname === '/'
               : href.startsWith('/manage')
                 ? pathname.startsWith('/manage')
-                : pathname.startsWith(href);
+                : href === '/settings'
+                  ? pathname.startsWith('/settings')
+                  : pathname.startsWith(href);
           return (
             <Link
               key={href}
