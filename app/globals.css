@@ -6,6 +6,8 @@
   --bg-base: #F5F5F0;
   --bg-card: #FFFFFF;
   --bg-card-hover: #FAFAF8;
+  --glass-time-bg: rgba(255, 255, 255, 0.65);
+  --glass-border: rgba(15, 23, 42, 0.08);
 
   --text-primary: #0F172A;
   --text-secondary: #64748B;
@@ -41,39 +43,41 @@
 }
 
 [data-theme='dark'] {
-  --bg-base: #0F172A;
-  --bg-card: #1E293B;
-  --bg-card-hover: #334155;
+  --bg-base: #030712;
+  --bg-card: rgba(15, 23, 42, 0.72);
+  --bg-card-hover: rgba(30, 41, 59, 0.85);
+  --glass-time-bg: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(255, 255, 255, 0.1);
 
-  --text-primary: #F8FAFC;
+  --text-primary: #F1F5F9;
   --text-secondary: #94A3B8;
   --text-tertiary: #64748B;
 
-  --accent: #3B82F6;
-  --accent-light: #1E3A5F;
+  --accent: #60A5FA;
+  --accent-light: rgba(59, 130, 246, 0.18);
 
-  --border: #334155;
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35), 0 2px 4px rgba(0, 0, 0, 0.2);
+  --border: rgba(255, 255, 255, 0.08);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 
-  --type-physical-bg: #422006;
-  --type-physical-text: #FBBF24;
-  --type-vle-bg: #2E1065;
+  --type-physical-bg: rgba(251, 191, 36, 0.15);
+  --type-physical-text: #FCD34D;
+  --type-vle-bg: rgba(167, 139, 250, 0.15);
   --type-vle-text: #C4B5FD;
-  --type-practical-bg: #431407;
-  --type-practical-text: #FB923C;
-  --type-study-bg: #14532D;
+  --type-practical-bg: rgba(251, 146, 60, 0.15);
+  --type-practical-text: #FDBA74;
+  --type-study-bg: rgba(74, 222, 128, 0.12);
   --type-study-text: #86EFAC;
-  --type-rest-bg: #450A0A;
+  --type-rest-bg: rgba(248, 113, 113, 0.12);
   --type-rest-text: #FCA5A5;
 
-  --tint-physical: #1C1910;
-  --tint-vle: #1A1528;
-  --tint-practical: #1C1510;
-  --tint-study: #101C14;
-  --tint-rest: #1C1010;
+  --tint-physical: rgba(251, 191, 36, 0.08);
+  --tint-vle: rgba(167, 139, 250, 0.1);
+  --tint-practical: rgba(251, 146, 60, 0.08);
+  --tint-study: rgba(74, 222, 128, 0.08);
+  --tint-rest: rgba(248, 113, 113, 0.08);
 
-  --danger-bg: #450A0A;
+  --danger-bg: rgba(248, 113, 113, 0.12);
   --danger-text: #FCA5A5;
   --success-text: #86EFAC;
 }
@@ -110,6 +114,16 @@
     border-radius: 16px;
     box-shadow: var(--shadow-sm);
     padding: 16px;
+  }
+  .card-glass {
+    border: 1px solid var(--glass-border);
+  }
+  [data-theme='dark'] .card {
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+  [data-theme='dark'] .card-glass {
+    box-shadow: var(--shadow-sm);
   }
   .card:active {
     transform: scale(0.98);

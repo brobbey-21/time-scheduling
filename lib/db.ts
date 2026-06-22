@@ -1,6 +1,7 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import { v4 as uuidv4 } from 'uuid';
 import type { ClassEntry, DayOfWeek, SettingEntry, TodoEntry } from './types';
+import { dedupeScheduleClasses } from './schedule-dedupe';
 
 interface IsaacDB extends DBSchema {
   classes: {
@@ -70,7 +71,7 @@ export async function getAllClasses(): Promise<ClassEntry[]> {
 export async function getClassesByDay(day: DayOfWeek): Promise<ClassEntry[]> {
   const db = await getDB();
   const classes = await db.getAllFromIndex('classes', 'by-day', day);
-  return classes.sort((a, b) => a.startTime.localeCompare(b.startTime));
+  return dedupeScheduleClasses(classes);
 }
 
 export async function getClassById(id: string): Promise<ClassEntry | undefined> {

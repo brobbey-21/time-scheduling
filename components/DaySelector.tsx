@@ -20,10 +20,10 @@ export default function DaySelector({ selected, onChange }: DaySelectorProps) {
             type="button"
             onClick={() => onChange(day)}
             className={cn(
-              'shrink-0 rounded-full px-4 py-2 text-caption font-medium transition-colors',
+              'shrink-0 rounded-full px-4 py-2 text-caption font-medium transition-colors backdrop-blur-sm',
               active
                 ? 'bg-accent text-white shadow-sm'
-                : 'border border-[var(--border)] bg-bg-card text-[var(--text-secondary)]'
+                : 'border border-[var(--glass-border)] bg-[var(--bg-card)] text-[var(--text-secondary)]'
             )}
           >
             {DAY_SHORT[day]}

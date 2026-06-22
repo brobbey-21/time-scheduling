@@ -5,6 +5,7 @@ import {
   registryFromSchedule,
   saveCourseRegistry,
 } from '@/lib/course-registry-storage';
+import { dedupeImportedClasses } from '@/lib/schedule-dedupe';
 import { getSharedSchedule, saveSharedSchedule } from '@/lib/shared-schedule-storage';
 import type { ClassEntry } from '@/lib/types';
 
@@ -31,11 +32,13 @@ export async function PUT(request: Request) {
     classes?: ClassEntry[];
     replaceRegistry?: boolean;
   };
-  const classes = (body.classes ?? []).map((c) => ({
-    ...c,
-    isDefault: true as const,
-    updatedAt: Date.now(),
-  }));
+  const classes = dedupeImportedClasses(
+    (body.classes ?? []).map((c) => ({
+      ...c,
+      isDefault: true as const,
+      updatedAt: Date.now(),
+    }))
+  );
 
   const saved = await saveSharedSchedule(user.cohort, classes);
   if (!saved) {

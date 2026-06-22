@@ -1,5 +1,6 @@
 import { getAllClasses, replaceAllClasses } from './db';
 import { notifyScheduleRefresh } from './notifications';
+import { dedupeScheduleClasses, stripPersonalOverlappingShared } from './schedule-dedupe';
 import { composeSchedule, getPersonalClasses } from './schedule-utils';
 import type { ClassEntry } from './types';
 
@@ -85,11 +86,17 @@ export async function syncAllClasses(): Promise<boolean> {
     if (personalRes.ok) {
       const data = (await personalRes.json()) as { classes?: ClassEntry[] };
       personal = mergeClasses(localPersonal, data.classes ?? []);
+    }
+
+    personal = stripPersonalOverlappingShared(shared, personal);
+    const schedule = dedupeScheduleClasses(composeSchedule(shared, personal));
+
+    if (personalRes.ok) {
       await pushPersonalClasses(personal);
     }
 
     if (sharedRes.ok || personalRes.ok) {
-      await replaceAllClasses(composeSchedule(shared, personal));
+      await replaceAllClasses(schedule);
       notifyClassesChanged();
       notifyScheduleRefresh();
       return true;

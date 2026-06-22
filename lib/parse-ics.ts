@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import { dedupeImportedClasses } from './schedule-dedupe';
 import type { ClassEntry, ClassType, DayOfWeek } from './types';
 import { detectTypeFromVenue } from './utils';
 
@@ -17,9 +18,30 @@ function unfoldIcs(content: string): string {
 }
 
 function parseTimeFromIcs(value: string): string | null {
-  const match = value.match(/(\d{2})(\d{2})(\d{2})?$/);
-  if (!match) return null;
-  return `${match[1]}:${match[2]}`;
+  const timeMatch = value.match(/T(\d{2})(\d{2})(\d{2})/i);
+  if (!timeMatch) {
+    const fallback = value.match(/(\d{2})(\d{2})(\d{2})?$/);
+    if (!fallback) return null;
+    return `${fallback[1]}:${fallback[2]}`;
+  }
+
+  if (value.endsWith('Z')) {
+    const dateMatch = value.match(/^(\d{4})(\d{2})(\d{2})T/i);
+    if (dateMatch) {
+      const iso = `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}T${timeMatch[1]}:${timeMatch[2]}:${timeMatch[3]}Z`;
+      const parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Africa/Accra',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).formatToParts(new Date(iso));
+      const hour = parts.find((p) => p.type === 'hour')?.value ?? timeMatch[1];
+      const minute = parts.find((p) => p.type === 'minute')?.value ?? timeMatch[2];
+      return `${hour}:${minute}`;
+    }
+  }
+
+  return `${timeMatch[1]}:${timeMatch[2]}`;
 }
 
 function parseDaysFromRrule(rrule: string): DayOfWeek[] {
@@ -150,5 +172,5 @@ export function parseICSFile(
     classes.push(...parseVeventBlock(block, isDefault));
   }
 
-  return classes;
+  return dedupeImportedClasses(classes);
 }

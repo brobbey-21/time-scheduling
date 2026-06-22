@@ -155,7 +155,7 @@ function TimetableContent() {
           </Link>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2 pb-4">
           {classes.map((cls) => (
             <ClassCard key={cls.id} cls={cls} showTime />
           ))}

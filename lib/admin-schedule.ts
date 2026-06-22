@@ -26,3 +26,7 @@ export async function saveSharedSchedule(
   }
   await syncAllClasses();
 }
+
+export async function clearSharedSchedule(): Promise<void> {
+  await saveSharedSchedule([], { replaceRegistry: true });
+}

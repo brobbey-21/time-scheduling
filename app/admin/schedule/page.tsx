@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Plus, Shield } from 'lucide-react';
+import { ArrowLeft, Plus, Shield, Trash2 } from 'lucide-react';
 import ClassCardCompact from '@/components/ClassCardCompact';
 import EmptyState from '@/components/EmptyState';
 import PageHeader from '@/components/PageHeader';
 import IcsImportButton from '@/components/IcsImportButton';
-import { fetchSharedSchedule } from '@/lib/admin-schedule';
+import { clearSharedSchedule, fetchSharedSchedule } from '@/lib/admin-schedule';
 import type { ClassEntry } from '@/lib/types';
 import { DAYS } from '@/lib/types';
 
@@ -15,6 +15,7 @@ export default function AdminSchedulePage() {
   const [classes, setClasses] = useState<ClassEntry[]>([]);
   const [cohort, setCohort] = useState('your class');
   const [loaded, setLoaded] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   const load = () => {
     fetchSharedSchedule()
@@ -30,6 +31,23 @@ export default function AdminSchedulePage() {
       });
     load();
   }, []);
+
+  const handleClearAll = async () => {
+    if (
+      !confirm(
+        `Clear the entire official ${cohort} timetable? This removes all shared classes for every student.`
+      )
+    ) {
+      return;
+    }
+    setClearing(true);
+    try {
+      await clearSharedSchedule();
+      load();
+    } finally {
+      setClearing(false);
+    }
+  };
 
   const sorted = [...classes].sort((a, b) => {
     const dayDiff = DAYS.indexOf(a.day) - DAYS.indexOf(b.day);
@@ -94,6 +112,17 @@ export default function AdminSchedulePage() {
           showVisibilityChoice
           cohortLabel={cohort}
         />
+        {loaded && sorted.length > 0 && (
+          <button
+            type="button"
+            onClick={handleClearAll}
+            disabled={clearing}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border)] py-3 text-body font-semibold text-[var(--danger-text)] disabled:opacity-60"
+          >
+            <Trash2 size={18} />
+            {clearing ? 'Clearing…' : 'Clear all official classes'}
+          </button>
+        )}
       </div>
 
       {!loaded ? (
