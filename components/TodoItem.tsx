@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Bell, BellOff, MoreHorizontal, Star } from 'lucide-react';
 import type { TodoEntry } from '@/lib/types';
@@ -15,7 +15,7 @@ interface TodoItemProps {
   onSetReminder?: (id: string, reminderTime: string | undefined) => void;
 }
 
-export default function TodoItem({
+const TodoItem = memo(function TodoItem({
   todo,
   onToggle,
   onStar,
@@ -159,4 +159,6 @@ export default function TodoItem({
       </div>
     </div>
   );
-}
+});
+
+export default TodoItem;

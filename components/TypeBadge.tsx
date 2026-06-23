@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import {
   BookOpen,
   Coffee,
@@ -26,7 +27,7 @@ interface TypeBadgeProps {
   className?: string;
 }
 
-export default function TypeBadge({ type, pulse, className }: TypeBadgeProps) {
+const TypeBadge = memo(function TypeBadge({ type, pulse, className }: TypeBadgeProps) {
   const config = TYPE_CONFIG[type];
   const Icon = ICONS[config.icon];
 
@@ -39,4 +40,6 @@ export default function TypeBadge({ type, pulse, className }: TypeBadgeProps) {
       {config.label}
     </span>
   );
-}
+});
+
+export default TypeBadge;

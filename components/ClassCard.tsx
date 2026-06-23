@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import Link from 'next/link';
 import { Video } from 'lucide-react';
 import type { ClassEntry } from '@/lib/types';
@@ -17,7 +18,7 @@ interface ClassCardProps {
   showTime?: boolean;
 }
 
-export default function ClassCard({ cls, showTime = false }: ClassCardProps) {
+const ClassCard = memo(function ClassCard({ cls, showTime = false }: ClassCardProps) {
   const tint = TYPE_CONFIG[cls.type].cardTint;
   const active = isClassActive(cls.startTime, cls.endTime);
   const showJoinNow =
@@ -114,4 +115,6 @@ export default function ClassCard({ cls, showTime = false }: ClassCardProps) {
       )}
     </div>
   );
-}
+});
+
+export default ClassCard;

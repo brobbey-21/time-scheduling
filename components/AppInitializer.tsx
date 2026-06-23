@@ -40,13 +40,15 @@ export default function AppInitializer({ children }: { children: React.ReactNode
     };
     window.addEventListener('online', sync);
     window.addEventListener('focus', sync);
-    document.addEventListener('visibilitychange', () => {
+    const onVisible = () => {
       if (document.visibilityState === 'visible') sync();
-    });
+    };
+    document.addEventListener('visibilitychange', onVisible);
 
     return () => {
       window.removeEventListener('online', sync);
       window.removeEventListener('focus', sync);
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, [isPublic]);
 

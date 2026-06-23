@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Calendar, Plus, RefreshCw } from 'lucide-react';
@@ -31,6 +31,8 @@ function TimetableContent() {
   const [loaded, setLoaded] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [hasPlanner, setHasPlanner] = useState(false);
+  const [confirmRegen, setConfirmRegen] = useState(false);
+  const confirmRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fromQuery = parseDayParam(searchParams.get('day'));
@@ -61,23 +63,23 @@ function TimetableContent() {
     if (!selectedDay) return;
     const profile = await fetchStudyProfile();
     if (!profile.preferences.setupCompletedAt) {
-      alert('Set up Study Planner in Settings first.');
+      setConfirmRegen(true);
       return;
     }
-    if (
-      !confirm(
-        `Regenerate planned study blocks for ${selectedDay}? Manual routines are kept.`
-      )
-    ) {
-      return;
-    }
+    setConfirmRegen(true);
+  };
+
+  const doRegenerate = useCallback(async () => {
+    if (!selectedDay) return;
+    setConfirmRegen(false);
     setRegenerating(true);
     try {
+      const profile = await fetchStudyProfile();
       await applyDayPlan(selectedDay, profile.preferences);
     } finally {
       setRegenerating(false);
     }
-  };
+  }, [selectedDay]);
 
   const isWeekend = selectedDay ? isWeekendDay(selectedDay) : false;
   const isToday = selectedDay === getDayNameFromDate(new Date());
@@ -128,6 +130,43 @@ function TimetableContent() {
           <RefreshCw size={14} className={regenerating ? 'animate-spin' : ''} />
           {regenerating ? 'Regenerating…' : `Regenerate ${selectedDay} study plan`}
         </button>
+      )}
+
+      {confirmRegen && (
+        <div
+          ref={confirmRef}
+          role="alertdialog"
+          aria-modal="true"
+          aria-label="Confirm regeneration"
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 px-5"
+          onClick={() => setConfirmRegen(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-bg-card p-6 shadow-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-subtitle">Regenerate study plan?</h2>
+            <p className="text-caption mt-2 text-[var(--text-secondary)]">
+              Manual routines are kept. Only planner-generated blocks will be regenerated.
+            </p>
+            <div className="mt-5 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmRegen(false)}
+                className="flex-1 rounded-xl border border-[var(--border)] py-2.5 text-caption font-semibold text-[var(--text-secondary)]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={doRegenerate}
+                className="flex-1 rounded-xl bg-accent py-2.5 text-caption font-semibold text-white"
+              >
+                Regenerate
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {!loaded ? (

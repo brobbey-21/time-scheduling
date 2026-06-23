@@ -108,16 +108,6 @@ export async function removeUserPushSubscription(
   await saveUserPushStore(userId, store);
 }
 
-/** @deprecated Use getUserPushStore */
-export async function getPushStore(): Promise<PushStore> {
-  return { ...EMPTY_PUSH_STORE };
-}
-
-/** @deprecated Use saveUserPushStore */
-export async function savePushStore(store: PushStore): Promise<void> {
-  void store;
-}
-
 export function isPushStoragePersistent(): boolean {
   return isUpstashConfigured();
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import type { ClassEntry } from '@/lib/types';
@@ -15,7 +16,7 @@ interface ClassCardCompactProps {
   badge?: string;
 }
 
-export default function ClassCardCompact({
+const ClassCardCompact = memo(function ClassCardCompact({
   cls,
   selectable,
   selected,
@@ -87,4 +88,6 @@ export default function ClassCardCompact({
       {content}
     </Link>
   );
-}
+});
+
+export default ClassCardCompact;

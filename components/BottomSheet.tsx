@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 interface BottomSheetProps {
   open: boolean;
@@ -18,16 +18,31 @@ export default function BottomSheet({
   title,
   children,
 }: BottomSheetProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
     if (open) {
+      previousFocusRef.current = document.activeElement as HTMLElement;
       document.body.style.overflow = 'hidden';
+      setTimeout(() => panelRef.current?.focus(), 50);
     } else {
       document.body.style.overflow = '';
+      previousFocusRef.current?.focus();
     }
     return () => {
       document.body.style.overflow = '';
     };
   }, [open]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    },
+    [onClose]
+  );
 
   return (
     <AnimatePresence>
@@ -39,13 +54,20 @@ export default function BottomSheet({
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] bg-black/30"
             onClick={onClose}
+            aria-hidden="true"
           />
           <motion.div
+            ref={panelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={title ?? 'Sheet'}
+            tabIndex={-1}
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-            className="fixed bottom-0 left-0 right-0 z-[100] mx-auto max-w-[430px]"
+            className="fixed bottom-0 left-0 right-0 z-[100] mx-auto max-w-[430px] outline-none"
+            onKeyDown={handleKeyDown}
           >
             <div
               className="rounded-t-2xl bg-bg-card px-5 pt-4 shadow-md"

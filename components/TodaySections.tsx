@@ -1,10 +1,11 @@
 'use client';
 
+import { memo, type ReactNode } from 'react';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
+import type { ClassEntry } from '@/lib/types';
 import ClassCardCompact from '@/components/ClassCardCompact';
 import EmptyState from '@/components/EmptyState';
-import type { ReactNode } from 'react';
 
 interface TodaySectionProps {
   title: string;
@@ -14,7 +15,7 @@ interface TodaySectionProps {
   children: ReactNode;
 }
 
-export function TodaySection({
+const TodaySection = memo(function TodaySection({
   title,
   href,
   linkLabel = 'See all',
@@ -44,9 +45,7 @@ export function TodaySection({
       {children}
     </section>
   );
-}
-
-import type { ClassEntry } from '@/lib/types';
+});
 
 interface TodaySchedulePreviewProps {
   classes: ClassEntry[];
@@ -56,7 +55,7 @@ interface TodaySchedulePreviewProps {
   totalCount: number;
 }
 
-export function TodaySchedulePreview({
+const TodaySchedulePreview = memo(function TodaySchedulePreview({
   classes,
   emptyTitle,
   emptyMessage,
@@ -84,4 +83,6 @@ export function TodaySchedulePreview({
       )}
     </div>
   );
-}
+});
+
+export { TodaySection, TodaySchedulePreview };

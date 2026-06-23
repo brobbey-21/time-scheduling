@@ -33,6 +33,7 @@ for (const file of requiredIcons) {
 
 const env = fs.readFileSync(path.join(root, '.env.local'), 'utf8');
 const envVars = [
+  'AUTH_SECRET',
   'NEXT_PUBLIC_VAPID_PUBLIC_KEY',
   'VAPID_PRIVATE_KEY',
   'VAPID_SUBJECT',

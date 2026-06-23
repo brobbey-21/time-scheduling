@@ -6,10 +6,19 @@ import {
 } from '@/lib/auth';
 import { authErrorResponse } from '@/lib/auth-errors';
 import { isValidCohortAsync } from '@/lib/cohorts';
+import { rateLimitByIp } from '@/lib/rate-limit';
 import { createUser } from '@/lib/user-storage';
 
 export async function POST(request: Request) {
   try {
+    const ipLimit = rateLimitByIp(request, { maxRequests: 5, windowMs: 60_000 });
+    if (!ipLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Too many attempts. Try again later.', retryIn: Math.ceil(ipLimit.resetIn / 1000) },
+        { status: 429 }
+      );
+    }
+
     const body = (await request.json()) as {
       email?: string;
       password?: string;

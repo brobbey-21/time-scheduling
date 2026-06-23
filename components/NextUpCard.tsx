@@ -19,7 +19,7 @@ export default function NextUpCard({ cls }: NextUpCardProps) {
     <div
       className="rounded-2xl p-5 text-white shadow-md"
       style={{
-        background: 'linear-gradient(135deg, #2563EB, #1D4ED8)',
+        background: 'linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 70%, #000))',
       }}
     >
       <div className="flex items-center justify-between">

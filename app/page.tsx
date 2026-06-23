@@ -10,7 +10,7 @@ import IOSBanner from '@/components/IOSBanner';
 import NextUpCard from '@/components/NextUpCard';
 import { TodaySchedulePreview, TodaySection } from '@/components/TodaySections';
 import TodoItem from '@/components/TodoItem';
-import { addTodo, getClassesByDay, getSetting, getTodosByDate } from '@/lib/db';
+import { addTodo, deleteTodo, getClassesByDay, getSetting, getTodosByDate, updateTodo } from '@/lib/db';
 import {
   getNotificationPermission,
   notifyScheduleRefresh,
@@ -103,7 +103,6 @@ export default function TodayPage() {
   const schedulePreview = remainingClasses.slice(0, SCHEDULE_PREVIEW);
 
   const handleToggleTodo = async (id: string) => {
-    const { updateTodo } = await import('@/lib/db');
     const todo = todos.find((t) => t.id === id);
     if (todo && todayDay) {
       await updateTodo(id, { completed: !todo.completed });
@@ -113,7 +112,6 @@ export default function TodayPage() {
   };
 
   const handleStarTodo = async (id: string) => {
-    const { updateTodo } = await import('@/lib/db');
     const todo = todos.find((t) => t.id === id);
     if (todo && todayDay) {
       await updateTodo(id, { starred: !todo.starred });
@@ -122,14 +120,12 @@ export default function TodayPage() {
   };
 
   const handleDeleteTodo = async (id: string) => {
-    const { deleteTodo } = await import('@/lib/db');
     await deleteTodo(id);
     if (todayDay) load(todayDay, dateStr);
     notifyScheduleRefresh();
   };
 
   const handleSetReminder = async (id: string, reminderTime: string | undefined) => {
-    const { updateTodo } = await import('@/lib/db');
     await updateTodo(id, { reminderTime });
     if (todayDay) load(todayDay, dateStr);
     notifyScheduleRefresh();

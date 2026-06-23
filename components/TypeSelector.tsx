@@ -35,7 +35,7 @@ const TYPES: ClassType[] = [
 
 export default function TypeSelector({ value, onChange }: TypeSelectorProps) {
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Class type">
       {TYPES.map((type) => {
         const config = TYPE_CONFIG[type];
         const Icon = ICONS[config.icon];
@@ -44,6 +44,8 @@ export default function TypeSelector({ value, onChange }: TypeSelectorProps) {
           <button
             key={type}
             type="button"
+            role="radio"
+            aria-checked={selected}
             onClick={() => onChange(type)}
             className={cn(
               'flex flex-col items-center gap-1.5 rounded-xl px-3 py-3 transition-all',
