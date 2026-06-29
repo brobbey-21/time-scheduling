@@ -60,7 +60,7 @@
   --accent: #60A5FA;
   --accent-light: rgba(59, 130, 246, 0.18);
 
-  --border: rgba(255, 255, 255, 0.08);
+  --border: rgba(255, 255, 255, 0.12);
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.04);
   --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 
@@ -133,8 +133,11 @@
   [data-theme='dark'] .card-glass {
     box-shadow: var(--shadow-sm);
   }
-  .card:active {
+  .card:not(.card-no-active):not(.todo-card):active {
     transform: scale(0.98);
+  }
+  .card {
+    transition: transform 0.1s ease;
   }
 
   .type-badge {

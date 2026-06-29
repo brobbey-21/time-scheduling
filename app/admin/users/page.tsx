@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Shield, ShieldOff, Users } from 'lucide-react';
+import { ArrowLeft, ArrowRightLeft, Shield, ShieldOff, Users } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import { PRIMARY_OWNER_EMAIL } from '@/lib/admin-users';
 
@@ -15,6 +15,11 @@ interface PublicUser {
   createdAt: number;
 }
 
+interface CohortOption {
+  id: string;
+  label: string;
+}
+
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<PublicUser[]>([]);
   const [total, setTotal] = useState(0);
@@ -23,18 +28,25 @@ export default function AdminUsersPage() {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [migratingId, setMigratingId] = useState<string | null>(null);
+  const [targetCohort, setTargetCohort] = useState<Record<string, string>>({});
+  const [cohorts, setCohorts] = useState<CohortOption[]>([]);
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
     setError('');
     try {
-      const res = await fetch('/api/admin/users', { cache: 'no-store' });
-      if (!res.ok) {
-        const data = (await res.json()) as { error?: string };
+      const [usersRes, cohortsRes] = await Promise.all([
+        fetch('/api/admin/users', { cache: 'no-store' }),
+        fetch('/api/cohorts', { cache: 'no-store' }),
+      ]);
+
+      if (!usersRes.ok) {
+        const data = (await usersRes.json()) as { error?: string };
         setError(data.error ?? 'Failed to load users');
         return;
       }
-      const data = (await res.json()) as {
+      const data = (await usersRes.json()) as {
         users: PublicUser[];
         total: number;
         admins: number;
@@ -46,6 +58,11 @@ export default function AdminUsersPage() {
       setAdminCount(data.admins);
       if (data.cohort) setCohortLabel(data.cohort);
       setIsSuperAdmin(Boolean(data.isSuperAdmin));
+
+      if (cohortsRes.ok) {
+        const cData = (await cohortsRes.json()) as { cohorts: CohortOption[] };
+        setCohorts(cData.cohorts ?? []);
+      }
     } catch {
       setError('Network error loading users.');
     } finally {
@@ -85,12 +102,52 @@ export default function AdminUsersPage() {
     }
   };
 
+  const migrateUser = async (user: PublicUser) => {
+    const newCohort = targetCohort[user.id];
+    if (!newCohort || newCohort === user.cohort) return;
+
+    if (
+      !confirm(
+        `Move ${user.name} from ${user.cohort} to ${newCohort}?`
+      )
+    ) {
+      return;
+    }
+
+    setMigratingId(user.id);
+    setError('');
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cohort: newCohort }),
+      });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        setError(data.error ?? 'Failed to migrate user');
+        return;
+      }
+      setTargetCohort((prev) => {
+        const next = { ...prev };
+        delete next[user.id];
+        return next;
+      });
+      await load();
+    } catch {
+      setError('Network error migrating user.');
+    } finally {
+      setMigratingId(null);
+    }
+  };
+
   const formatJoined = (ts: number) =>
     new Date(ts).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
     });
+
+  const otherCohorts = cohorts.filter((c) => c.id !== cohortLabel);
 
   return (
     <main className="px-5 pt-8 pb-8">
@@ -153,6 +210,9 @@ export default function AdminUsersPage() {
           {users.map((user) => {
             const isOwner = user.email === PRIMARY_OWNER_EMAIL;
             const isAdminUser = user.role === 'admin';
+            const currentTarget = targetCohort[user.id];
+            const hasCohortChange =
+              currentTarget && currentTarget !== user.cohort;
 
             return (
               <div key={user.id} className="card">
@@ -178,6 +238,44 @@ export default function AdminUsersPage() {
                     <p className="text-caption mt-1 text-[var(--text-tertiary)]">
                       Joined {formatJoined(user.createdAt)} · {user.cohort}
                     </p>
+
+                    {!isOwner && otherCohorts.length > 0 && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <select
+                          value={targetCohort[user.id] ?? user.cohort}
+                          onChange={(e) =>
+                            setTargetCohort((prev) => ({
+                              ...prev,
+                              [user.id]: e.target.value,
+                            }))
+                          }
+                          className="rounded-lg border border-[var(--border)] bg-bg-base px-2 py-1.5 text-micro"
+                        >
+                          {cohorts.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.label}
+                            </option>
+                          ))}
+                        </select>
+                        {hasCohortChange && (
+                          <button
+                            type="button"
+                            disabled={migratingId === user.id}
+                            onClick={() => migrateUser(user)}
+                            className="inline-flex items-center gap-1 rounded-lg bg-accent px-2.5 py-1.5 text-micro font-semibold text-white disabled:opacity-50"
+                          >
+                            {migratingId === user.id ? (
+                              '...'
+                            ) : (
+                              <>
+                                <ArrowRightLeft size={12} />
+                                Move
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {!isOwner && (

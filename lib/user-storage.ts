@@ -151,6 +151,36 @@ export async function updateUserRole(
   return { id, email, name, role, cohort, createdAt };
 }
 
+export async function updateUserCohort(
+  userId: string,
+  newCohort: string,
+  actor?: { cohort: string; email: string; isSuperAdmin: boolean }
+): Promise<PublicUser> {
+  const store = await getStore();
+  const index = store.users.findIndex((u) => u.id === userId);
+  if (index === -1) throw new Error('USER_NOT_FOUND');
+
+  const target = store.users[index];
+
+  if (isPrimaryOwner(target.email)) {
+    throw new Error('CANNOT_MIGRATE_OWNER');
+  }
+
+  if (actor && !actor.isSuperAdmin && actor.cohort !== target.cohort) {
+    throw new Error('COHORT_FORBIDDEN');
+  }
+
+  if (target.cohort === newCohort) {
+    throw new Error('ALREADY_IN_COHORT');
+  }
+
+  store.users[index] = { ...target, cohort: newCohort };
+  await saveStore(store);
+
+  const { id, email, name, role, cohort, createdAt } = store.users[index];
+  return { id, email, name, role, cohort, createdAt };
+}
+
 export async function findUserByEmail(
   email: string
 ): Promise<UserRecord | undefined> {

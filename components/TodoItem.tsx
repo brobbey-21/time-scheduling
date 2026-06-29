@@ -1,8 +1,8 @@
 'use client';
 
-import { memo, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Bell, BellOff, MoreHorizontal, Repeat, Star } from 'lucide-react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Bell, BellOff, MoreHorizontal, Repeat, Star, Trash2 } from 'lucide-react';
 import type { TodoEntry } from '@/lib/types';
 import { DAY_SHORT } from '@/lib/types';
 import { formatTime12 } from '@/lib/utils';
@@ -25,11 +25,46 @@ const TodoItem = memo(function TodoItem({
 }: TodoItemProps) {
   const [editingReminder, setEditingReminder] = useState(false);
   const [time, setTime] = useState(todo.reminderTime ?? '');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const saveReminder = () => {
     onSetReminder?.(todo.id, time || undefined);
     setEditingReminder(false);
   };
+
+  const handleDelete = useCallback(() => {
+    setMenuOpen(false);
+    if (confirm('Delete this task?')) {
+      onDelete(todo.id);
+    }
+  }, [onDelete, todo.id]);
+
+  const handleReminderToggle = useCallback(() => {
+    setMenuOpen(false);
+    if (todo.reminderTime) {
+      onSetReminder?.(todo.id, undefined);
+    } else {
+      setTime(todo.reminderTime ?? '');
+      setEditingReminder(true);
+    }
+  }, [onSetReminder, todo.id, todo.reminderTime]);
+
+  const handleStarToggle = useCallback(() => {
+    setMenuOpen(false);
+    onStar(todo.id);
+  }, [onStar, todo.id]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [menuOpen]);
 
   return (
     <div className="card flex items-start gap-3">
@@ -118,51 +153,108 @@ const TodoItem = memo(function TodoItem({
         )}
       </div>
 
-      <div className="flex shrink-0 items-center gap-1">
-        {onSetReminder && !todo.completed && (
+      <div className="relative shrink-0" ref={menuRef}>
+        <div className="flex items-center gap-1">
+          {onSetReminder && !todo.completed && (
+            <button
+              type="button"
+              onClick={() => {
+                if (todo.reminderTime && !editingReminder) {
+                  onSetReminder(todo.id, undefined);
+                  return;
+                }
+                setTime(todo.reminderTime ?? '');
+                setEditingReminder(true);
+              }}
+              className="p-1"
+              aria-label={todo.reminderTime ? 'Remove reminder' : 'Set reminder'}
+            >
+              {todo.reminderTime ? (
+                <Bell size={16} className="text-accent" />
+              ) : (
+                <BellOff size={16} className="text-[var(--text-tertiary)]" />
+              )}
+            </button>
+          )}
           <button
             type="button"
-            onClick={() => {
-              if (todo.reminderTime && !editingReminder) {
-                onSetReminder(todo.id, undefined);
-                return;
-              }
-              setTime(todo.reminderTime ?? '');
-              setEditingReminder(true);
-            }}
+            onClick={() => onStar(todo.id)}
             className="p-1"
-            aria-label={todo.reminderTime ? 'Remove reminder' : 'Set reminder'}
+            aria-label={todo.starred ? 'Unstar' : 'Star'}
           >
-            {todo.reminderTime ? (
-              <Bell size={16} className="text-accent" />
-            ) : (
-              <BellOff size={16} className="text-[var(--text-tertiary)]" />
-            )}
+            <Star
+              size={16}
+              className={cn(
+                todo.starred
+                  ? 'fill-amber-400 text-amber-400'
+                  : 'text-[var(--text-tertiary)]'
+              )}
+            />
           </button>
-        )}
-        <button
-          type="button"
-          onClick={() => onStar(todo.id)}
-          className="p-1"
-          aria-label={todo.starred ? 'Unstar' : 'Star'}
-        >
-          <Star
-            size={16}
-            className={cn(
-              todo.starred
-                ? 'fill-amber-400 text-amber-400'
-                : 'text-[var(--text-tertiary)]'
-            )}
-          />
-        </button>
-        <button
-          type="button"
-          onClick={() => onDelete(todo.id)}
-          className="p-1 text-[var(--text-tertiary)]"
-          aria-label="Delete todo"
-        >
-          <MoreHorizontal size={16} />
-        </button>
+          <button
+            type="button"
+            onClick={() => setMenuOpen((v) => !v)}
+            className="p-1 text-[var(--text-tertiary)]"
+            aria-label="More options"
+          >
+            <MoreHorizontal size={16} />
+          </button>
+        </div>
+
+        <AnimatePresence>
+          {menuOpen && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: -4 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: -4 }}
+              transition={{ duration: 0.12 }}
+              className="absolute right-0 top-full z-30 mt-1 w-44 overflow-hidden rounded-xl border border-[var(--border)] bg-bg-card shadow-lg"
+            >
+              {onSetReminder && !todo.completed && (
+                <button
+                  type="button"
+                  onClick={handleReminderToggle}
+                  className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-caption hover:bg-[var(--bg-base)]"
+                >
+                  {todo.reminderTime ? (
+                    <>
+                      <BellOff size={14} className="text-[var(--text-secondary)]" />
+                      <span>Remove reminder</span>
+                    </>
+                  ) : (
+                    <>
+                      <Bell size={14} className="text-[var(--text-secondary)]" />
+                      <span>Set reminder</span>
+                    </>
+                  )}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleStarToggle}
+                className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-caption hover:bg-[var(--bg-base)]"
+              >
+                <Star
+                  size={14}
+                  className={cn(
+                    todo.starred
+                      ? 'fill-amber-400 text-amber-400'
+                      : 'text-[var(--text-secondary)]'
+                  )}
+                />
+                <span>{todo.starred ? 'Unstar' : 'Star task'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-caption text-[var(--danger-text)] hover:bg-[var(--danger-bg)]"
+              >
+                <Trash2 size={14} />
+                <span>Delete</span>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

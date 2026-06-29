@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Bell, Plus, Sun } from 'lucide-react';
+import { motion } from 'framer-motion';
 import DailyStudyGuide from '@/components/DailyStudyGuide';
 import BottomSheet from '@/components/BottomSheet';
 import EmptyState from '@/components/EmptyState';
@@ -36,6 +37,19 @@ function isClassPast(endTime: string): boolean {
   const nowMins = now.getHours() * 60 + now.getMinutes();
   return timeToMinutes(endTime) < nowMins;
 }
+
+const stagger = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.08 },
+  },
+};
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 12 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
+};
 
 export default function TodayPage() {
   const [viewDate, setViewDate] = useState<Date | null>(null);
@@ -182,10 +196,15 @@ export default function TodayPage() {
   }
 
   return (
-    <main className="px-5 pt-6 pb-8">
+    <motion.main
+      className="px-5 pt-6 pb-8"
+      variants={stagger}
+      initial="hidden"
+      animate="show"
+    >
       <IOSBanner />
 
-      <header className="mb-5">
+      <motion.header className="mb-5" variants={fadeUp}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-micro uppercase tracking-wide text-[var(--text-tertiary)]">
@@ -220,65 +239,71 @@ export default function TodayPage() {
             <Bell size={20} className="text-accent" />
           </button>
         </div>
-      </header>
+      </motion.header>
 
       {nextUp && (
-        <section className="mb-5">
+        <motion.section className="mb-5" variants={fadeUp}>
           <NextUpCard cls={nextUp} />
-        </section>
+        </motion.section>
       )}
 
-      <DailyStudyGuide />
+      <motion.div variants={fadeUp}>
+        <DailyStudyGuide />
+      </motion.div>
 
-      <TodaySection title="Up next" href={timetableHref} badge={classes.length}>
-        <TodaySchedulePreview
-          classes={schedulePreview}
-          totalCount={remainingClasses.length}
-          timetableHref={timetableHref}
-          emptyTitle={isWeekend ? 'Weekend is clear' : 'No classes left today'}
-          emptyMessage={
-            isWeekend
-              ? `Nothing left on ${todayDay}. Enjoy the break.`
-              : classes.length === 0
-                ? 'Enjoy your free day!'
-                : 'All done for today — nice work.'
-          }
-        />
-      </TodaySection>
-
-      <TodaySection
-        title="Tasks"
-        href={`/todos?date=${dateStr}`}
-        badge={pendingTodos.length}
-      >
-        {topTodos.length === 0 ? (
-          <EmptyState
-            title="No tasks yet"
-            message="Tap + to add a quick task for today."
+      <motion.div variants={fadeUp}>
+        <TodaySection title="Up next" href={timetableHref} badge={classes.length}>
+          <TodaySchedulePreview
+            classes={schedulePreview}
+            totalCount={remainingClasses.length}
+            timetableHref={timetableHref}
+            emptyTitle={isWeekend ? 'Weekend is clear' : 'No classes left today'}
+            emptyMessage={
+              isWeekend
+                ? `Nothing left on ${todayDay}. Enjoy the break.`
+                : classes.length === 0
+                  ? 'Enjoy your free day!'
+                  : 'All done for today — nice work.'
+            }
           />
-        ) : (
-          <div className="space-y-2">
-            {topTodos.map((todo) => (
-              <TodoItem
-                key={todo.id}
-                todo={todo}
-                onToggle={handleToggleTodo}
-                onStar={handleStarTodo}
-                onDelete={handleDeleteTodo}
-                onSetReminder={handleSetReminder}
-              />
-            ))}
-            {pendingTodos.length > TASK_PREVIEW && (
-              <Link
-                href={`/todos?date=${dateStr}`}
-                className="block rounded-xl border border-dashed border-[var(--border)] py-2.5 text-center text-caption font-medium text-accent"
-              >
-                +{pendingTodos.length - TASK_PREVIEW} more tasks
-              </Link>
-            )}
-          </div>
-        )}
-      </TodaySection>
+        </TodaySection>
+      </motion.div>
+
+      <motion.div variants={fadeUp}>
+        <TodaySection
+          title="Tasks"
+          href={`/todos?date=${dateStr}`}
+          badge={pendingTodos.length}
+        >
+          {topTodos.length === 0 ? (
+            <EmptyState
+              title="No tasks yet"
+              message="Tap + to add a quick task for today."
+            />
+          ) : (
+            <div className="space-y-2">
+              {topTodos.map((todo) => (
+                <TodoItem
+                  key={todo.id}
+                  todo={todo}
+                  onToggle={handleToggleTodo}
+                  onStar={handleStarTodo}
+                  onDelete={handleDeleteTodo}
+                  onSetReminder={handleSetReminder}
+                />
+              ))}
+              {pendingTodos.length > TASK_PREVIEW && (
+                <Link
+                  href={`/todos?date=${dateStr}`}
+                  className="block rounded-xl border border-dashed border-[var(--border)] py-2.5 text-center text-caption font-medium text-accent"
+                >
+                  +{pendingTodos.length - TASK_PREVIEW} more tasks
+                </Link>
+              )}
+            </div>
+          )}
+        </TodaySection>
+      </motion.div>
 
       <button
         type="button"
@@ -337,6 +362,6 @@ export default function TodayPage() {
           Add Task
         </button>
       </BottomSheet>
-    </main>
+    </motion.main>
   );
 }

@@ -95,7 +95,9 @@ export default function DailyStudyGuide() {
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
-    void (async () => {
+    let cancelled = false;
+
+    const load = async () => {
       const today = getDayNameFromDate(new Date());
       const tomorrow = nextDayName(today);
       setTomorrowDay(tomorrow);
@@ -104,7 +106,7 @@ export default function DailyStudyGuide() {
       const prefs = profile.preferences;
 
       if (!prefs.setupCompletedAt) {
-        setLoaded(true);
+        if (!cancelled) setLoaded(true);
         return;
       }
 
@@ -113,15 +115,32 @@ export default function DailyStudyGuide() {
       );
 
       if (aiToday) {
-        setTodayPlaybook(aiToday);
-        setLoaded(true);
+        if (!cancelled) {
+          setTodayPlaybook(aiToday);
+          setLoaded(true);
+        }
         return;
       }
 
       const shared = getSharedClasses(await getAllClasses());
-      setTodayPlaybook(buildDayPlaybook(today, shared, prefs));
-      setLoaded(true);
-    })();
+      if (!cancelled) {
+        setTodayPlaybook(buildDayPlaybook(today, shared, prefs));
+        setLoaded(true);
+      }
+    };
+
+    void load();
+
+    const refresh = () => {
+      cancelled = false;
+      void load();
+    };
+    window.addEventListener('classes-changed', refresh);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener('classes-changed', refresh);
+    };
   }, []);
 
   if (!loaded || !todayPlaybook) return null;
