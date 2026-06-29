@@ -2,8 +2,9 @@
 
 import { memo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Bell, BellOff, MoreHorizontal, Star } from 'lucide-react';
+import { Bell, BellOff, MoreHorizontal, Repeat, Star } from 'lucide-react';
 import type { TodoEntry } from '@/lib/types';
+import { DAY_SHORT } from '@/lib/types';
 import { formatTime12 } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
@@ -108,6 +109,12 @@ const TodoItem = memo(function TodoItem({
               Reminder · {formatTime12(todo.reminderTime)}
             </p>
           )
+        )}
+        {todo.recurring && todo.recurringDays && todo.recurringDays.length > 0 && (
+          <p className="text-caption mt-0.5 flex items-center gap-1 text-[var(--text-tertiary)]">
+            <Repeat size={11} />
+            {todo.recurringDays.map((d) => DAY_SHORT[d]).join(', ')}
+          </p>
         )}
       </div>
 

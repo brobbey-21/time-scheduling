@@ -14,7 +14,7 @@ import {
   updateTodo,
 } from '@/lib/db';
 import { notifyScheduleRefresh } from '@/lib/notifications';
-import type { TodoEntry } from '@/lib/types';
+import type { DayOfWeek, TodoEntry } from '@/lib/types';
 import {
   cn,
   formatDateShort,
@@ -23,6 +23,7 @@ import {
   parseDateString,
   toDateString,
 } from '@/lib/utils';
+import { DAYS, DAY_SHORT } from '@/lib/types';
 
 type Filter = 'all' | 'pending' | 'completed';
 
@@ -36,6 +37,8 @@ function TodosContent() {
   const [reminderTime, setReminderTime] = useState('');
   const [remindEnabled, setRemindEnabled] = useState(true);
   const [defaultReminder, setDefaultReminder] = useState('18:00');
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringDays, setRecurringDays] = useState<DayOfWeek[]>([]);
 
   useEffect(() => {
     const dateParam = searchParams.get('date');
@@ -100,11 +103,15 @@ function TodosContent() {
       completed: false,
       starred: false,
       reminderTime: remindEnabled ? (reminderTime || defaultReminder) : undefined,
+      recurring: isRecurring,
+      recurringDays: isRecurring ? recurringDays : undefined,
     });
     setNewText('');
     setReminderTime('');
     setRemindEnabled(true);
     setShowInput(false);
+    setIsRecurring(false);
+    setRecurringDays([]);
     load();
     notifyScheduleRefresh();
   };
@@ -172,12 +179,21 @@ function TodosContent() {
         <div className="space-y-3">
           {sorted.map((todo) => (
             <TodoItem
-              key={todo.id}
+              key={`${todo.id}-${todo.recurring ? dateStr : ''}`}
               todo={todo}
               onToggle={async (id) => {
                 const t = todos.find((x) => x.id === id);
                 if (t) {
-                  await updateTodo(id, { completed: !t.completed });
+                  if (t.recurring) {
+                    const dates = t.completedDates || [];
+                    const isCompleted = dates.includes(dateStr);
+                    const newDates = isCompleted
+                      ? dates.filter((d) => d !== dateStr)
+                      : [...dates, dateStr];
+                    await updateTodo(id, { completedDates: newDates });
+                  } else {
+                    await updateTodo(id, { completed: !t.completed });
+                  }
                   load();
                   notifyScheduleRefresh();
                 }
@@ -242,6 +258,56 @@ function TodosContent() {
                 onChange={(e) => setReminderTime(e.target.value)}
                 className="text-caption w-full rounded-lg border border-[var(--border)] bg-bg-base px-3 py-2 text-[var(--text-secondary)]"
               />
+            )}
+            <label className="flex items-center justify-between">
+              <span className="text-caption text-[var(--text-secondary)]">
+                Repeat weekly
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={isRecurring}
+                onClick={() => {
+                  setIsRecurring((v) => !v);
+                  if (!isRecurring && dayName) {
+                    setRecurringDays([dayName as DayOfWeek]);
+                  }
+                }}
+                className={`relative h-6 w-10 rounded-full transition-colors ${
+                  isRecurring ? 'bg-accent' : 'bg-[var(--border)]'
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                    isRecurring ? 'left-[18px]' : 'left-0.5'
+                  }`}
+                />
+              </button>
+            </label>
+            {isRecurring && (
+              <div className="flex flex-wrap gap-1.5">
+                {DAYS.map((day) => (
+                  <button
+                    key={day}
+                    type="button"
+                    onClick={() =>
+                      setRecurringDays((prev) =>
+                        prev.includes(day)
+                          ? prev.filter((d) => d !== day)
+                          : [...prev, day]
+                      )
+                    }
+                    className={cn(
+                      'rounded-full px-2.5 py-1 text-micro font-medium transition-colors',
+                      recurringDays.includes(day)
+                        ? 'bg-accent text-white'
+                        : 'border border-[var(--border)] text-[var(--text-secondary)]'
+                    )}
+                  >
+                    {DAY_SHORT[day]}
+                  </button>
+                ))}
+              </div>
             )}
             <div className="flex gap-2">
               <button

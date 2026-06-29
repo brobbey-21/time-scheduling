@@ -30,12 +30,15 @@
   --type-study-text: #16A34A;
   --type-rest-bg: #FEE2E2;
   --type-rest-text: #DC2626;
+  --type-personal-bg: #F0E6FF;
+  --type-personal-text: #9333EA;
 
   --tint-physical: #FFFBEB;
   --tint-vle: #F5F3FF;
   --tint-practical: #FFF7ED;
   --tint-study: #F0FDF4;
   --tint-rest: #FFF5F5;
+  --tint-personal: #FAF5FF;
 
   --danger-bg: #FEF2F2;
   --danger-text: #DC2626;
@@ -71,12 +74,15 @@
   --type-study-text: #86EFAC;
   --type-rest-bg: rgba(248, 113, 113, 0.12);
   --type-rest-text: #FCA5A5;
+  --type-personal-bg: rgba(147, 51, 234, 0.15);
+  --type-personal-text: #C084FC;
 
   --tint-physical: rgba(251, 191, 36, 0.08);
   --tint-vle: rgba(167, 139, 250, 0.1);
   --tint-practical: rgba(251, 146, 60, 0.08);
   --tint-study: rgba(74, 222, 128, 0.08);
   --tint-rest: rgba(248, 113, 113, 0.08);
+  --tint-personal: rgba(147, 51, 234, 0.1);
 
   --danger-bg: rgba(248, 113, 113, 0.12);
   --danger-text: #FCA5A5;
@@ -161,6 +167,10 @@
   .type-badge[data-type='REST'] {
     background: var(--type-rest-bg);
     color: var(--type-rest-text);
+  }
+  .type-badge[data-type='PERSONAL'] {
+    background: var(--type-personal-bg);
+    color: var(--type-personal-text);
   }
 
   .type-badge-pulse {

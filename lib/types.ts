@@ -3,7 +3,8 @@ export type ClassType =
   | 'CLASS_VLE'
   | 'PRACTICAL'
   | 'STUDY'
-  | 'REST';
+  | 'REST'
+  | 'PERSONAL';
 
 export type DayOfWeek =
   | 'Monday'
@@ -149,6 +150,9 @@ export interface TodoEntry {
   starred: boolean;
   reminderTime?: string;
   order: number;
+  recurring?: boolean;
+  recurringDays?: DayOfWeek[];
+  completedDates?: string[];
   createdAt: number;
   updatedAt?: number;
 }
@@ -203,6 +207,13 @@ export const TYPE_CONFIG: Record<
     text: '--type-rest-text',
     cardTint: '--tint-rest',
   },
+  PERSONAL: {
+    label: 'PERSONAL',
+    icon: 'User',
+    bg: '--type-personal-bg',
+    text: '--type-personal-text',
+    cardTint: '--tint-personal',
+  },
 };
 
 export const DAYS: DayOfWeek[] = [
@@ -231,4 +242,5 @@ export const TYPE_LABELS: Record<ClassType, string> = {
   PRACTICAL: 'Practical',
   STUDY: 'Study Block',
   REST: 'Rest',
+  PERSONAL: 'Personal',
 };

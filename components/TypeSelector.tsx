@@ -5,6 +5,7 @@ import {
   Coffee,
   FlaskConical,
   MapPin,
+  User,
   Wifi,
   type LucideIcon,
 } from 'lucide-react';
@@ -18,6 +19,7 @@ const ICONS: Record<string, LucideIcon> = {
   FlaskConical,
   BookOpen,
   Coffee,
+  User,
 };
 
 interface TypeSelectorProps {
@@ -31,6 +33,7 @@ const TYPES: ClassType[] = [
   'PRACTICAL',
   'STUDY',
   'REST',
+  'PERSONAL',
 ];
 
 export default function TypeSelector({ value, onChange }: TypeSelectorProps) {

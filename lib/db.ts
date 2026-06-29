@@ -1,6 +1,7 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import { v4 as uuidv4 } from 'uuid';
 import type { ClassEntry, DayOfWeek, SettingEntry, TodoEntry } from './types';
+import { DAYS } from './types';
 import { dedupeScheduleClasses } from './schedule-dedupe';
 
 interface IsaacDB extends DBSchema {
@@ -196,10 +197,29 @@ export async function resetClassesToDefault(
   scheduleClassCloudPush();
 }
 
+function getDateDayOfWeek(dateStr: string): DayOfWeek {
+  const d = new Date(dateStr + 'T12:00:00');
+  return DAYS[d.getDay() === 0 ? 6 : d.getDay() - 1];
+}
+
 export async function getTodosByDate(date: string): Promise<TodoEntry[]> {
   const db = await getDB();
-  const todos = await db.getAllFromIndex('todos', 'by-date', date);
-  return todos.sort((a, b) => a.order - b.order);
+  const direct = await db.getAllFromIndex('todos', 'by-date', date);
+  const dayOfWeek = getDateDayOfWeek(date);
+  const allTodos = await db.getAll('todos');
+  const recurring = allTodos
+    .filter(
+      (t) =>
+        t.recurring &&
+        t.recurringDays?.includes(dayOfWeek) &&
+        t.date !== date
+    )
+    .map((t) => ({
+      ...t,
+      completed: t.completedDates?.includes(date) ?? false,
+    }));
+  const combined = [...direct, ...recurring];
+  return combined.sort((a, b) => a.order - b.order);
 }
 
 export async function getAllTodos(): Promise<TodoEntry[]> {

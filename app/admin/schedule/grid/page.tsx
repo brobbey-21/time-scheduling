@@ -20,6 +20,7 @@ const TYPE_COLORS: Record<ClassType, string> = {
   PRACTICAL: 'bg-amber-100 text-amber-900 border-amber-200',
   STUDY: 'bg-emerald-100 text-emerald-900 border-emerald-200',
   REST: 'bg-gray-100 text-gray-600 border-gray-200',
+  PERSONAL: 'bg-fuchsia-100 text-fuchsia-900 border-fuchsia-200',
 };
 
 function timeSlots(): string[] {
