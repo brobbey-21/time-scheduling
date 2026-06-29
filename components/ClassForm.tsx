@@ -98,35 +98,40 @@ export default function ClassForm({
     onSubmit(form);
   };
 
+  const isRest = form.type === 'REST';
+  const isPersonal = form.type === 'PERSONAL';
+
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div>
         <label className="text-micro mb-1.5 block uppercase text-[var(--text-tertiary)]">
-          Course Code
+          {isPersonal ? 'What is this for?' : 'Course Code'}
         </label>
         <input
           required
           value={form.courseCode}
           onChange={(e) => update('courseCode', e.target.value)}
           className="w-full rounded-xl border border-[var(--border)] bg-bg-card px-4 py-3 text-body outline-none focus:ring-2 focus:ring-accent/30"
-          placeholder="MN 374"
+          placeholder={isPersonal ? 'Gym, Reading, Errands...' : 'MN 374'}
         />
       </div>
 
-      <div>
-        <label className="text-micro mb-1.5 block uppercase text-[var(--text-tertiary)]">
-          Course Name
-        </label>
-        <input
-          required
-          value={form.courseName}
-          onChange={(e) => update('courseName', e.target.value)}
-          className="w-full rounded-xl border border-[var(--border)] bg-bg-card px-4 py-3 text-body outline-none focus:ring-2 focus:ring-accent/30"
-          placeholder="Surface Mining Systems"
-        />
-      </div>
+      {!isPersonal && (
+        <div>
+          <label className="text-micro mb-1.5 block uppercase text-[var(--text-tertiary)]">
+            Course Name
+          </label>
+          <input
+            required
+            value={form.courseName}
+            onChange={(e) => update('courseName', e.target.value)}
+            className="w-full rounded-xl border border-[var(--border)] bg-bg-card px-4 py-3 text-body outline-none focus:ring-2 focus:ring-accent/30"
+            placeholder="Surface Mining Systems"
+          />
+        </div>
+      )}
 
-      {showCreditHours && form.type !== 'REST' && (
+      {showCreditHours && !isRest && !isPersonal && (
         <div>
           <label className="text-micro mb-1.5 block uppercase text-[var(--text-tertiary)]">
             Credit hours
@@ -187,56 +192,119 @@ export default function ClassForm({
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
+      {isPersonal && (
+        <div className="rounded-xl bg-[var(--type-personal-bg)] p-4">
+          <p className="text-body font-semibold text-[var(--type-personal-text)]">
+            {form.courseCode || 'Your personal activity'}
+          </p>
+          <p className="text-caption mt-1 text-[var(--text-secondary)]">
+            {formatTime12(form.startTime)} – {formatTime12(form.endTime)}
+            {form.notificationEnabled
+              ? ' · you\'ll get a reminder'
+              : ''}
+          </p>
+        </div>
+      )}
+
+      {!isRest && !isPersonal && (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-micro mb-1.5 block uppercase text-[var(--text-tertiary)]">
+              Start Time
+            </label>
+            <input
+              type="time"
+              required
+              value={form.startTime}
+              onChange={(e) => update('startTime', e.target.value)}
+              className="w-full rounded-xl border border-[var(--border)] bg-bg-card px-4 py-3 text-body outline-none focus:ring-2 focus:ring-accent/30"
+            />
+          </div>
+          <div>
+            <label className="text-micro mb-1.5 block uppercase text-[var(--text-tertiary)]">
+              End Time
+            </label>
+            <input
+              type="time"
+              required
+              value={form.endTime}
+              onChange={(e) => update('endTime', e.target.value)}
+              className="w-full rounded-xl border border-[var(--border)] bg-bg-card px-4 py-3 text-body outline-none focus:ring-2 focus:ring-accent/30"
+            />
+          </div>
+        </div>
+      )}
+
+      {isPersonal && (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-micro mb-1.5 block uppercase text-[var(--text-tertiary)]">
+              Start Time
+            </label>
+            <input
+              type="time"
+              required
+              value={form.startTime}
+              onChange={(e) => update('startTime', e.target.value)}
+              className="w-full rounded-xl border border-[var(--border)] bg-bg-card px-4 py-3 text-body outline-none focus:ring-2 focus:ring-accent/30"
+            />
+          </div>
+          <div>
+            <label className="text-micro mb-1.5 block uppercase text-[var(--text-tertiary)]">
+              End Time
+            </label>
+            <input
+              type="time"
+              required
+              value={form.endTime}
+              onChange={(e) => update('endTime', e.target.value)}
+              className="w-full rounded-xl border border-[var(--border)] bg-bg-card px-4 py-3 text-body outline-none focus:ring-2 focus:ring-accent/30"
+            />
+          </div>
+        </div>
+      )}
+
+      {!isPersonal && !isRest && (
+        <>
+          <div>
+            <label className="text-micro mb-1.5 block uppercase text-[var(--text-tertiary)]">
+              Venue
+            </label>
+            <input
+              value={form.venue}
+              onChange={(e) => update('venue', e.target.value)}
+              className="w-full rounded-xl border border-[var(--border)] bg-bg-card px-4 py-3 text-body outline-none focus:ring-2 focus:ring-accent/30"
+              placeholder="CCG2 (leave blank if VLE)"
+            />
+          </div>
+
+          <div>
+            <label className="text-micro mb-1.5 block uppercase text-[var(--text-tertiary)]">
+              Lecturer
+            </label>
+            <input
+              value={form.lecturer}
+              onChange={(e) => update('lecturer', e.target.value)}
+              className="w-full rounded-xl border border-[var(--border)] bg-bg-card px-4 py-3 text-body outline-none focus:ring-2 focus:ring-accent/30"
+              placeholder="AB Yaley"
+            />
+          </div>
+        </>
+      )}
+
+      {!isPersonal && !isRest && (
         <div>
           <label className="text-micro mb-1.5 block uppercase text-[var(--text-tertiary)]">
-            Start Time
+            Location <span className="text-[var(--text-tertiary)]">(optional)</span>
           </label>
           <input
-            type="time"
-            required
-            value={form.startTime}
-            onChange={(e) => update('startTime', e.target.value)}
+            value={form.venue}
+            onChange={(e) => update('venue', e.target.value)}
             className="w-full rounded-xl border border-[var(--border)] bg-bg-card px-4 py-3 text-body outline-none focus:ring-2 focus:ring-accent/30"
+            placeholder="Home, Gym, Library..."
           />
         </div>
-        <div>
-          <label className="text-micro mb-1.5 block uppercase text-[var(--text-tertiary)]">
-            End Time
-          </label>
-          <input
-            type="time"
-            required
-            value={form.endTime}
-            onChange={(e) => update('endTime', e.target.value)}
-            className="w-full rounded-xl border border-[var(--border)] bg-bg-card px-4 py-3 text-body outline-none focus:ring-2 focus:ring-accent/30"
-          />
-        </div>
-      </div>
-
-      <div>
-        <label className="text-micro mb-1.5 block uppercase text-[var(--text-tertiary)]">
-          Venue
-        </label>
-        <input
-          value={form.venue}
-          onChange={(e) => update('venue', e.target.value)}
-          className="w-full rounded-xl border border-[var(--border)] bg-bg-card px-4 py-3 text-body outline-none focus:ring-2 focus:ring-accent/30"
-          placeholder="CCG2 (leave blank if VLE)"
-        />
-      </div>
-
-      <div>
-        <label className="text-micro mb-1.5 block uppercase text-[var(--text-tertiary)]">
-          Lecturer
-        </label>
-        <input
-          value={form.lecturer}
-          onChange={(e) => update('lecturer', e.target.value)}
-          className="w-full rounded-xl border border-[var(--border)] bg-bg-card px-4 py-3 text-body outline-none focus:ring-2 focus:ring-accent/30"
-          placeholder="AB Yaley"
-        />
-      </div>
+      )}
 
       <div>
         <label className="text-micro mb-2 block uppercase text-[var(--text-tertiary)]">
@@ -266,7 +334,7 @@ export default function ClassForm({
       <div className="flex items-center justify-between rounded-xl bg-bg-card p-4 shadow-sm">
         <div>
           <p className="text-body">
-            {form.type === 'REST' ? 'Remind when break ends' : 'Notify before class'}
+            {form.type === 'REST' ? 'Remind when break ends' : form.type === 'PERSONAL' ? 'Remind me' : 'Notify before class'}
           </p>
           {form.type === 'REST' ? (
             <p className="text-caption mt-1 text-[var(--text-secondary)]">
@@ -315,7 +383,7 @@ export default function ClassForm({
           onChange={(e) => update('notes', e.target.value)}
           rows={3}
           className="w-full resize-none rounded-xl border border-[var(--border)] bg-bg-card px-4 py-3 text-body outline-none focus:ring-2 focus:ring-accent/30"
-          placeholder="Add notes..."
+          placeholder={isPersonal ? 'Add details...' : 'Add notes...'}
         />
       </div>
 
