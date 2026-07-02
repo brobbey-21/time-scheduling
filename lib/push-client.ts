@@ -61,7 +61,42 @@ export async function subscribeToPush(): Promise<boolean> {
     body: JSON.stringify(subscription),
   });
 
-  return res.ok;
+  if (!res.ok) return false;
+
+  const data = await res.json().catch(() => null);
+  return data?.ok === true;
+}
+
+export async function forceResubscribe(): Promise<boolean> {
+  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  if (!publicKey || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+    return false;
+  }
+
+  const registration = await waitForServiceWorker();
+  if (!registration) return false;
+
+  const existing = await registration.pushManager.getSubscription();
+  if (existing) {
+    await existing.unsubscribe().catch(() => {});
+  }
+
+  const subscription = await registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource,
+  });
+
+  const res = await fetch('/api/push/subscribe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(subscription),
+  });
+
+  if (!res.ok) return false;
+
+  const data = await res.json().catch(() => null);
+  return data?.ok === true;
 }
 
 export async function syncPushSchedule(
@@ -93,12 +128,21 @@ export async function syncPushScheduleWithRetry(
   return false;
 }
 
+export async function verifyPushSubscription(): Promise<boolean> {
+  const status = await fetchPushStatus();
+  if (!status) return false;
+  if (status.subscriptions > 0) return true;
+
+  return forceResubscribe();
+}
+
 export async function fetchPushStatus(): Promise<{
   pushConfigured: boolean;
   subscriptions: number;
   pendingReminders: number;
   dueNext24h: number;
   lastScheduleSync: number | null;
+  storagePersistent: boolean;
 } | null> {
   try {
     const res = await fetch('/api/push/status', {
@@ -112,6 +156,7 @@ export async function fetchPushStatus(): Promise<{
       pendingReminders: number;
       dueNext24h: number;
       lastScheduleSync: number | null;
+      storagePersistent: boolean;
     };
   } catch {
     return null;

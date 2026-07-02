@@ -12,6 +12,7 @@ import Toggle from '@/components/Toggle';
 import { getSetting, setSetting } from '@/lib/db';
 import {
   fetchPushStatus,
+  forceResubscribe,
   isPushConfigured,
   sendTestPush,
   subscribeToPush,
@@ -39,6 +40,8 @@ export default function NotificationsSection() {
   const [pushServerPending, setPushServerPending] = useState<number | null>(null);
   const [pushServerSubscriptions, setPushServerSubscriptions] = useState<number | null>(null);
   const [pushLastSync, setPushLastSync] = useState<number | null>(null);
+  const [pushStoragePersistent, setPushStoragePersistent] = useState(true);
+  const [reconnecting, setReconnecting] = useState(false);
   const pushConfigured = isPushConfigured();
 
   const refreshStatus = async () => {
@@ -56,11 +59,13 @@ export default function NotificationsSection() {
         setPushServerPending(pushStatus.pendingReminders);
         setPushServerSubscriptions(pushStatus.subscriptions);
         setPushLastSync(pushStatus.lastScheduleSync);
+        setPushStoragePersistent(pushStatus.storagePersistent);
       }
     } else {
       setPushServerPending(null);
       setPushServerSubscriptions(null);
       setPushLastSync(null);
+      setPushStoragePersistent(true);
     }
   };
 
@@ -127,10 +132,24 @@ export default function NotificationsSection() {
 
   const handleRefreshPushSchedule = async () => {
     setRefreshingPush(true);
+    if (pushConfigured) {
+      await forceResubscribe();
+    }
     notifyScheduleRefresh();
     await new Promise((resolve) => setTimeout(resolve, 1200));
     await refreshStatus();
     setRefreshingPush(false);
+  };
+
+  const handleReconnectPush = async () => {
+    setReconnecting(true);
+    if (pushConfigured) {
+      await forceResubscribe();
+    }
+    notifyScheduleRefresh();
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    await refreshStatus();
+    setReconnecting(false);
   };
 
   const permissionLabel =
@@ -200,7 +219,15 @@ export default function NotificationsSection() {
               >
                 {pushServerSubscriptions > 0
                   ? `${pushServerSubscriptions} registered`
-                  : 'None — reopen app once'}
+                  : 'None — tap Reconnect below'}
+              </span>
+            </div>
+          )}
+          {pushConfigured && !pushStoragePersistent && (
+            <div className="flex items-center justify-between text-caption">
+              <span className="text-[var(--text-secondary)]">Server storage</span>
+              <span className="font-medium text-[var(--danger-text)]">
+                Ephemeral — add Redis for production
               </span>
             </div>
           )}
@@ -276,6 +303,20 @@ export default function NotificationsSection() {
               />
               {refreshingPush ? 'Refreshing…' : 'Refresh notification schedule'}
             </button>
+            {pushConfigured && pushServerSubscriptions === 0 && (
+              <button
+                type="button"
+                onClick={handleReconnectPush}
+                disabled={reconnecting}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 text-body font-semibold text-white"
+              >
+                <RefreshCw
+                  size={18}
+                  className={reconnecting ? 'animate-spin' : ''}
+                />
+                {reconnecting ? 'Reconnecting…' : 'Reconnect push notifications'}
+              </button>
+            )}
           </div>
         )}
 
@@ -284,7 +325,7 @@ export default function NotificationsSection() {
             <Info size={16} className="mt-0.5 shrink-0 text-[var(--text-tertiary)]" />
             <p className="text-caption text-[var(--text-secondary)]">
               For reliable alerts when the app is closed, add Class Time to your home
-              screen (especially on iPhone) and tap Refresh after changing your schedule.
+              screen (especially on iPhone) and tap Reconnect if push devices show 0.
             </p>
           </div>
         )}

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth-session';
 import { isVapidConfigured } from '@/lib/vapid';
-import { getUserPushStore } from '@/lib/push-storage';
+import { getUserPushStore, isPushStoragePersistent } from '@/lib/push-storage';
 
 export async function GET() {
   const user = await getSessionUser();
@@ -29,5 +29,6 @@ export async function GET() {
     pendingReminders: pending.length,
     dueNext24h: dueSoon.length,
     lastScheduleSync: store.updatedAt || null,
+    storagePersistent: isPushStoragePersistent(),
   });
 }

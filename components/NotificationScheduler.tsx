@@ -16,6 +16,7 @@ import {
   isPushConfigured,
   subscribeToPush,
   syncPushScheduleWithRetry,
+  verifyPushSubscription,
   waitForServiceWorker,
 } from '@/lib/push-client';
 
@@ -60,6 +61,11 @@ export default function NotificationScheduler() {
         if (subscribed) {
           const reminders = buildPushReminders(classes, todos, options);
           await syncPushScheduleWithRetry(reminders, 3);
+        }
+
+        const verified = await verifyPushSubscription();
+        if (!verified) {
+          console.warn('[Push] Subscription not verified on server, will retry next cycle');
         }
       }
 
